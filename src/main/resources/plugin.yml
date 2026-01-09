@@ -1,0 +1,17 @@
+name: SimpleModDetect
+version: 0
+main: top.mcbi.spigot.simplemoddetect.SimpleModDetect
+api-version: 1.19
+authors: [ LoliColleen ]
+depend: [ ]
+description: A Spigot plugin to detect mods
+commands:
+  simplemoddetect:
+    description: SimpleModDetect 命令
+    usage: /<command> [reload]
+    permission: simplemoddetect.reload
+
+permissions:
+  simplemoddetect.reload:
+    description: 允许重新加载 SimpleModDetect 配置
+    default: op

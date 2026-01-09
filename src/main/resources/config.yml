@@ -1,0 +1,41 @@
+# SimpleModDetect 配置
+
+# 调试模式开关 (true/false)
+debug-mode: false
+
+# 黑名单模式 (false) 或白名单模式 (true)
+whitelist-mode: false
+
+# Fallback服务器地址（留空则禁用Fallback功能）
+fallback-server: "Limbo"
+
+# Fallback服务器提示消息
+fallback-message: "§c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mods%\n§c请移除这些模组后重新加入\n\n§c注意：Tweakeroo等生电Mod是不被允许的\n§c如果你安装了，请一并删除Malilib"
+
+# 被阻止的模组列表（黑名单模式）
+blocked-mods:
+  - "servux"
+  - "journeymap"
+  - "litematica"
+  - "schematica"
+  - "wurst"
+  - "aristois"
+  - "impact"
+  - "meteor-client"
+  - "cheat-client"
+  - "hack-client"
+  - "baritone"
+  - "worlddownloader"
+
+# 允许的模组列表（白名单模式）
+whitelisted-mods:
+  - "fabric-api"
+  - "optifabric"
+  - "sodium"
+  - "iris"
+  - "lithium"
+  - "phosphor"
+  - "modmenu"
+
+# 踢出玩家时显示的消息（当Fallback服务器未设置时使用）
+kick-message: "§c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mods%\n§c请移除这些模组后重新加入\n\n§c注意：Tweakeroo等生电Mod是不被允许的\n§c如果你安装了，请一并删除Malilib"

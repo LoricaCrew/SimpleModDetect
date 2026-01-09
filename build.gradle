@@ -1,0 +1,72 @@
+plugins {
+    id 'java'
+    id 'io.freefair.lombok' version '8.6'
+    id 'com.gradleup.shadow' version '9.2.2'
+    id 'io.papermc.paperweight.userdev' version '2.0.0-beta.19'
+    id 'org.screamingsandals.nms-mapper' version '1.4.10'
+}
+
+group = 'top.mcbi.spigot.simplemoddetect'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    maven { url 'https://jitpack.io' }
+    maven { url 'https://maven.aliyun.com/nexus/content/groups/public/' }
+    maven { url 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
+    maven { url 'https://repo.papermc.io/repository/maven-public/' }
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+    maven { url 'https://oss.sonatype.org/content/groups/public/' }
+    maven { url 'https://repo.onarandombox.com/content/groups/public/' }
+    maven { url 'https://libraries.minecraft.net/' }
+    maven { url 'https://repo.codemc.org/repository/maven-public/' }
+    maven { url 'https://repo.dmulloy2.net/repository/public/' }
+    maven { url 'https://simonsator.de/repo/' }
+    maven { url 'https://repo.extendedclip.com/content/repositories/placeholderapi/' }
+    maven { url 'https://repository.alkaidmc.com/snapshots' }
+}
+
+dependencies {
+    compileOnly fileTree('libs')
+    //compileOnly 'org.spigotmc:spigot-api:1.19.4-R0.1-SNAPSHOT'
+    paperweight.paperDevBundle("1.21.11-R0.1-SNAPSHOT")
+    shadow "io.papermc:paperlib:1.0.8"
+
+    implementation 'org.jetbrains:annotations:24.0.1'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+shadowJar {
+    configurations = [project.configurations.shadow]
+    archiveClassifier = ''
+}
+
+build {
+    dependsOn(shadowJar)
+}
+
+sourceSets.main.java.srcDirs = ['src/generated/java', 'src/main/java']
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+tasks.register('copyPlugin', Copy) {
+    from "build/libs/SimpleModDetect-${version}.jar"
+    into "run/plugins"
+}
+
+processResources {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    from(sourceSets.main.resources.srcDirs) {
+        include 'plugin.yml' expand 'version': project.version
+    }
+}
+
+tasks.register('sourceJar', Jar) {
+    from sourceSets.main.allSource
+}
