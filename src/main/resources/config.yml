@@ -40,13 +40,11 @@ translation-detect:
   mods:
     Freecam:
       key: "key.freecam.toggle"
-      detectionKey: "Toggle Freecam"
       # 当检测到模组时，后台会按顺序执行以下指令。
       # 可用变量: %player% %mod_name% %detected_value%
       commands:
         - "kick %player% Freecam是不被允许的"
     ExampleMod:
       key: "examplemod.lang.key"
-      detectionKey: "ExampleMod Key"
       commands:
         - "ban %player% 7d 使用了封禁模组"

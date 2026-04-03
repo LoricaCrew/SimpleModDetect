@@ -54,13 +54,11 @@ public class ConfigManager {
     public static class TranslationModConfig {
         public final String name;
         public final String key;
-        public final String detectionKey;
         public final List<String> commands;
 
-        public TranslationModConfig(String name, String key, String detectionKey, List<String> commands) {
+        public TranslationModConfig(String name, String key, List<String> commands) {
             this.name = name;
             this.key = key;
-            this.detectionKey = detectionKey;
             this.commands = commands;
         }
     }
@@ -151,17 +149,13 @@ public class ConfigManager {
             }
 
             String key = modSection.getString("key");
-            String detectionKey = modSection.getString("detectionKey");
             if (key == null) {
                 plugin.getLogger().warning("翻译检测配置缺失必要的 key: " + modName);
                 continue;
             }
-            if (detectionKey != null && detectionKey.isBlank()) {
-                detectionKey = null;
-            }
 
             List<String> commands = new ArrayList<>(modSection.getStringList("commands"));
-            translationMods.add(new TranslationModConfig(modName, key, detectionKey, commands));
+            translationMods.add(new TranslationModConfig(modName, key, commands));
         }
 
         plugin.getLogger().info("已加载 " + translationMods.size() + " 个翻译检测模组配置");

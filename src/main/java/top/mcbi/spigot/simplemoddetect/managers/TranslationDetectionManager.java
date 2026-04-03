@@ -51,7 +51,7 @@ public class TranslationDetectionManager implements Listener {
                 try {
                     Component content = Component.empty();
                     for (TranslationModConfig config : plugin.getConfigManager().getTranslationMods()) {
-                        content = content.append(Component.text(" T: ").append(Component.translatable(config.key)));
+                        content = content.append(Component.text(" TTT: ").append(Component.translatable(config.key)));
                     }
 
                     SignSide backSide = sign.getSide(Side.BACK);
@@ -94,17 +94,8 @@ public class TranslationDetectionManager implements Listener {
                     String signContent = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(line0);
 
                     for (TranslationModConfig config : plugin.getConfigManager().getTranslationMods()) {
-                        boolean isDetected = false;
-                        if (config.detectionKey != null && signContent.contains("T: " + config.detectionKey)) {
-                            isDetected = true;
-                        }
-                        else if (config.detectionKey == null && !signContent.contains("T: " + config.key)) {
-                            isDetected = true;
-                        }
-
-                        if (isDetected) {
-                            handleModDetection(player, config);
-                            break;
+                        if (!signContent.contains("TTT: " + config.key)) {
+                            handleModDetection(player, config, signContent);
                         }
                     }
                 }
@@ -114,7 +105,7 @@ public class TranslationDetectionManager implements Listener {
         }
     }
 
-    private void handleModDetection(Player player, TranslationModConfig config) {
+    private void handleModDetection(Player player, TranslationModConfig config, String detectedValue) {
         plugin.getLogger().info("玩家 " + player.getName() + " 被检测到使用 " + config.name);
         notifyStaff("玩家 " + player.getName() + " 正在使用 " + config.name);
         
@@ -124,7 +115,7 @@ public class TranslationDetectionManager implements Listener {
                     String finalCmd = cmd
                         .replace("%player%", player.getName())
                         .replace("%mod_name%", config.name)
-                        .replace("%detected_value%", config.detectionKey);
+                        .replace("%detected_value%", detectedValue);
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd);
                 }
             }
