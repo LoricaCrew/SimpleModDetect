@@ -92,10 +92,19 @@ public class TranslationDetectionManager implements Listener {
                 Component line0 = event.line(0);
                 if (line0 != null) {
                     String signContent = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(line0);
-                    
+
                     for (TranslationModConfig config : plugin.getConfigManager().getTranslationMods()) {
-                        if (signContent.contains("T: " + config.detectionKey)) {
+                        boolean isDetected = false;
+                        if (config.detectionKey != null && signContent.contains("T: " + config.detectionKey)) {
+                            isDetected = true;
+                        }
+                        else if (config.detectionKey == null && !signContent.contains("T: " + config.key)) {
+                            isDetected = true;
+                        }
+
+                        if (isDetected) {
                             handleModDetection(player, config);
+                            break;
                         }
                     }
                 }

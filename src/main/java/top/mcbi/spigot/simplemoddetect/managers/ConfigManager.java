@@ -152,9 +152,12 @@ public class ConfigManager {
 
             String key = modSection.getString("key");
             String detectionKey = modSection.getString("detectionKey");
-            if (key == null || detectionKey == null) {
-                plugin.getLogger().warning("翻译检测配置缺失 key 或 detectionKey: " + modName);
+            if (key == null) {
+                plugin.getLogger().warning("翻译检测配置缺失必要的 key: " + modName);
                 continue;
+            }
+            if (detectionKey != null && detectionKey.isBlank()) {
+                detectionKey = null;
             }
 
             List<String> commands = new ArrayList<>(modSection.getStringList("commands"));
