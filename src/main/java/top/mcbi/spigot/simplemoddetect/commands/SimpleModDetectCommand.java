@@ -6,7 +6,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
 import top.mcbi.spigot.simplemoddetect.SimpleModDetect;
-import top.mcbi.spigot.simplemoddetect.managers.ConfigManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +30,6 @@ public class SimpleModDetectCommand implements CommandExecutor, TabCompleter {
             case "check" -> handleCheck(sender, args);
             case "list" -> handleList(sender);
             case "debug" -> handleDebug(sender);
-            case "fallback" -> handleFallback(sender, args);
             default -> {
                 sendHelp(sender);
                 yield true;
@@ -45,7 +43,6 @@ public class SimpleModDetectCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/simplemoddetect check <玩家> §7- 检查玩家mod列表");
         sender.sendMessage("§e/simplemoddetect list §7- 查看所有已检测玩家的mod");
         sender.sendMessage("§e/simplemoddetect debug §7- 切换调试模式");
-        sender.sendMessage("§e/simplemoddetect fallback <服务器地址> §7- 设置Fallback服务器");
     }
 
     private boolean handleReload(CommandSender sender) {
@@ -57,8 +54,8 @@ public class SimpleModDetectCommand implements CommandExecutor, TabCompleter {
         plugin.getConfigManager().loadConfig();
         sender.sendMessage("§aSimpleModDetect 配置已重新加载");
         sender.sendMessage("§a调试模式: " + (plugin.getConfigManager().isDebugMode() ? "开启" : "关闭"));
-        sender.sendMessage("§aFallback服务器: " + 
-            (plugin.getConfigManager().getFallbackServer().isEmpty() ? "未设置" : plugin.getConfigManager().getFallbackServer()));
+        sender.sendMessage("§a频道检测: " + (plugin.getConfigManager().isChannelDetectEnabled() ? "开启" : "关闭"));
+        sender.sendMessage("§a翻译检测: " + (plugin.getConfigManager().isTranslationEnabled() ? "开启" : "关闭"));
         return true;
     }
 
@@ -111,29 +108,9 @@ public class SimpleModDetectCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        ConfigManager configManager = plugin.getConfigManager();
-        boolean newDebugMode = !configManager.isDebugMode();
-        configManager.setDebugMode(newDebugMode);
+        boolean newDebugMode = !plugin.getConfigManager().isDebugMode();
+        plugin.getConfigManager().setDebugMode(newDebugMode);
         sender.sendMessage("§a调试模式已" + (newDebugMode ? "开启" : "关闭"));
-        return true;
-    }
-
-    private boolean handleFallback(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("simplemoddetect.fallback")) {
-            sender.sendMessage("§c你没有权限执行此命令");
-            return true;
-        }
-
-        ConfigManager configManager = plugin.getConfigManager();
-        if (args.length > 1) {
-            String server = args[1];
-            configManager.setFallbackServer(server);
-            sender.sendMessage("§aFallback服务器已设置为: " + server);
-        } else {
-            String currentServer = configManager.getFallbackServer();
-            sender.sendMessage("§e当前Fallback服务器: " + (currentServer.isEmpty() ? "未设置" : currentServer));
-            sender.sendMessage("§e用法: /simplemoddetect fallback <服务器地址>");
-        }
         return true;
     }
 
@@ -146,7 +123,6 @@ public class SimpleModDetectCommand implements CommandExecutor, TabCompleter {
             completions.add("check");
             completions.add("list");
             completions.add("debug");
-            completions.add("fallback");
         } else if (args.length == 2 && args[0].equalsIgnoreCase("check")) {
             // 为 check 命令提供玩家名补全
             for (String playerName : plugin.getModDetectionManager().getAllPlayerMods().keySet()) {

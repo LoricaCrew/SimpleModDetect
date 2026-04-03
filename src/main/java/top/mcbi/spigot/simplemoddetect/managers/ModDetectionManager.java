@@ -1,11 +1,12 @@
 package top.mcbi.spigot.simplemoddetect.managers;
 
-import com.google.common.io.ByteArrayDataOutput;
-import com.google.common.io.ByteStreams;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import top.mcbi.spigot.simplemoddetect.utils.ModChecker;
 import top.mcbi.spigot.simplemoddetect.SimpleModDetect;
+import top.mcbi.spigot.simplemoddetect.managers.ConfigManager.ChannelModConfig;
+import top.mcbi.spigot.simplemoddetect.utils.ModChecker;
 
 import java.util.HashMap;
 import java.util.List;
@@ -24,56 +25,53 @@ public class ModDetectionManager {
     public void handleDetectedMods(Player player, List<String> mods) {
         playerMods.put(player.getName(), mods);
 
-        List<String> violatingMods = modChecker.checkMods(mods);
-
-        if (!violatingMods.isEmpty()) {
-            ConfigManager configManager = plugin.getConfigManager();
-            String fallbackServer = configManager.getFallbackServer();
-            
-            if (fallbackServer != null && !fallbackServer.isEmpty()) {
-                sendToFallbackServer(player, violatingMods);
-            } else {
-                kickPlayer(player, violatingMods);
-            }
-        } else {
+        List<ChannelModConfig> matchedConfigs = modChecker.checkMods(mods);
+        if (matchedConfigs.isEmpty()) {
             plugin.getLogger().info("玩家 " + player.getName() + " 模组检查通过，检测到 " + mods.size() + " 个模组");
             if (plugin.getConfigManager().isDebugMode()) {
                 for (String mod : mods) {
                     plugin.getLogger().info("  - " + mod);
                 }
             }
+            return;
+        }
+
+        for (ChannelModConfig config : matchedConfigs) {
+            String detectedMod = modChecker.findMatchedModId(config, mods);
+            plugin.getLogger().warning("玩家 " + player.getName() + " 被检测到使用频道模组 " + config.name + "，实际标识: " + detectedMod);
+            notifyStaff("玩家 " + player.getName() + " 被检测到使用 " + config.name + " (" + detectedMod + ")");
+            executeCommands(player, config, detectedMod);
         }
     }
 
-    private void kickPlayer(Player player, List<String> violatingMods) {
-        String kickMessage = plugin.getConfigManager().getKickMessage();
-        String finalMessage = kickMessage.replace("%mods%", String.join(", ", violatingMods));
+    private void executeCommands(Player player, ChannelModConfig config, String detectedMod) {
         Bukkit.getScheduler().runTask(plugin, () -> {
-            if (player.isOnline()) {
-                player.kickPlayer(finalMessage);
-                plugin.getLogger().warning("玩家 " + player.getName() + " 因使用违规模组被踢出: " + violatingMods);
+            if (config.commands == null || config.commands.isEmpty()) {
+                return;
+            }
+
+            for (String command : config.commands) {
+                String finalCommand = command
+                    .replace("%player%", player.getName())
+                    .replace("%mod_name%", config.name)
+                    .replace("%detected_mod%", detectedMod);
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand);
             }
         });
     }
 
-    private void sendToFallbackServer(Player player, List<String> violatingMods) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            if (!player.isOnline()) {
-                return;
+    private void notifyStaff(String message) {
+        ConfigManager config = plugin.getConfigManager();
+        if (!config.isChannelNotifyStaff()) {
+            return;
+        }
+
+        Component staffNotification = Component.text("[SimpleModDetect] " + message, NamedTextColor.RED);
+        for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+            if (onlinePlayer.hasPermission(config.getChannelNotificationPermission())) {
+                onlinePlayer.sendMessage(staffNotification);
             }
-
-            ConfigManager configManager = plugin.getConfigManager();
-            String fallbackMessage = configManager.getFallbackMessage();
-            String message = fallbackMessage.replace("%mods%", String.join(", ", violatingMods));
-
-            player.sendMessage(message);
-
-            ByteArrayDataOutput out = ByteStreams.newDataOutput();
-            out.writeUTF("Connect");
-            out.writeUTF(configManager.getFallbackServer());
-
-            player.sendPluginMessage(plugin, "BungeeCord", out.toByteArray());
-        });
+        }
     }
 
     public List<String> getPlayerMods(String playerName) {

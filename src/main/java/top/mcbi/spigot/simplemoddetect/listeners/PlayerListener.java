@@ -16,12 +16,14 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         plugin.getChannelInjector().injectPlayer(event.getPlayer());
+        plugin.getTranslationDetectionManager().checkPlayer(event.getPlayer());
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         String playerName = event.getPlayer().getName();
         plugin.getChannelInjector().removePlayer(event.getPlayer());
+        plugin.getTranslationDetectionManager().removePlayer(event.getPlayer().getUniqueId());
         plugin.getModDetectionManager().removePlayer(playerName);
     }
 }

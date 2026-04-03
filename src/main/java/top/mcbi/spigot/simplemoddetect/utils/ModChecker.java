@@ -1,10 +1,10 @@
 package top.mcbi.spigot.simplemoddetect.utils;
 
 import top.mcbi.spigot.simplemoddetect.managers.ConfigManager;
+import top.mcbi.spigot.simplemoddetect.managers.ConfigManager.ChannelModConfig;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 public class ModChecker {
     private final ConfigManager configManager;
@@ -13,70 +13,25 @@ public class ModChecker {
         this.configManager = configManager;
     }
 
-    public List<String> checkMods(List<String> playerMods) {
-        List<String> violatingMods = new ArrayList<>();
-
-        if (configManager.isEnableWhitelistMode()) {
-            // 白名单模式
-            for (String mod : playerMods) {
-                if (!isWhitelisted(mod)) {
-                    violatingMods.add(mod);
-                }
-            }
-        } else {
-            // 黑名单模式
-            for (String mod : playerMods) {
-                if (isBlocked(mod)) {
-                    violatingMods.add(mod);
-                }
+    public List<ChannelModConfig> checkMods(List<String> playerMods) {
+        List<ChannelModConfig> matchedConfigs = new ArrayList<>();
+        for (ChannelModConfig config : configManager.getChannelMods()) {
+            if (matchesAnyPlayerMod(config, playerMods)) {
+                matchedConfigs.add(config);
             }
         }
-
-        return violatingMods;
+        return matchedConfigs;
     }
 
-    private boolean isBlocked(String modId) {
-        Set<String> blockedMods = configManager.getBlockedMods();
-        
-        // 精确匹配
-        if (blockedMods.contains(modId)) {
-            return true;
-        }
-
-        // 部分匹配
-        for (String blockedMod : blockedMods) {
-            if (modId.toLowerCase().contains(blockedMod.toLowerCase()) ||
-                blockedMod.toLowerCase().contains(modId.toLowerCase())) {
-                return true;
+    public String findMatchedModId(ChannelModConfig config, List<String> playerMods) {
+        for (String playerMod : playerMods) {
+            for (String match : config.matches) {
+                if (matches(playerMod, match)) {
+                    return playerMod;
+                }
             }
         }
-
-        return false;
-    }
-
-    private boolean isWhitelisted(String modId) {
-        Set<String> whitelistedMods = configManager.getWhitelistedMods();
-        
-        // 精确匹配
-        if (whitelistedMods.contains(modId)) {
-            return true;
-        }
-
-        // 部分匹配
-        for (String whitelistedMod : whitelistedMods) {
-            if (modId.toLowerCase().contains(whitelistedMod.toLowerCase()) ||
-                whitelistedMod.toLowerCase().contains(modId.toLowerCase())) {
-                return true;
-            }
-        }
-
-        // 允许Fabric基础组件
-        if (modId.contains("fabric-api") || modId.contains("fabricloader") ||
-            modId.contains("minecraft") || modId.contains("java")) {
-            return true;
-        }
-
-        return false;
+        return config.name;
     }
 
     public boolean isValidModId(String modId) {
@@ -107,6 +62,25 @@ public class ModChecker {
             modId.equals("forge") ||
             modId.equals("vanilla") ||
             modId.isEmpty();
+    }
+
+    private boolean matchesAnyPlayerMod(ChannelModConfig config, List<String> playerMods) {
+        for (String playerMod : playerMods) {
+            for (String match : config.matches) {
+                if (matches(playerMod, match)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean matches(String playerMod, String match) {
+        String normalizedPlayerMod = playerMod.toLowerCase();
+        String normalizedMatch = match.toLowerCase();
+        return normalizedPlayerMod.equals(normalizedMatch)
+            || normalizedPlayerMod.contains(normalizedMatch)
+            || normalizedMatch.contains(normalizedPlayerMod);
     }
 }
 

@@ -1,13 +1,14 @@
 package top.mcbi.spigot.simplemoddetect.managers;
 
 import lombok.Getter;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 
 public class ConfigManager {
@@ -17,21 +18,52 @@ public class ConfigManager {
     @Getter
     private FileConfiguration config;
 
-    // Getters and Setters
-    @Getter
-    private Set<String> blockedMods;
-    @Getter
-    private Set<String> whitelistedMods;
-    @Getter
-    private boolean enableWhitelistMode;
-    @Getter
-    private String kickMessage;
     @Getter
     private boolean debugMode;
+
     @Getter
-    private String fallbackServer;
+    private boolean channelDetectEnabled;
     @Getter
-    private String fallbackMessage;
+    private boolean channelNotifyStaff;
+    @Getter
+    private String channelNotificationPermission;
+    @Getter
+    private final List<ChannelModConfig> channelMods = new ArrayList<>();
+
+    @Getter
+    private boolean translationEnabled;
+    @Getter
+    private boolean notifyStaff;
+    @Getter
+    private String notificationPermission;
+    @Getter
+    private final List<TranslationModConfig> translationMods = new ArrayList<>();
+
+    public static class ChannelModConfig {
+        public final String name;
+        public final List<String> matches;
+        public final List<String> commands;
+
+        public ChannelModConfig(String name, List<String> matches, List<String> commands) {
+            this.name = name;
+            this.matches = matches;
+            this.commands = commands;
+        }
+    }
+
+    public static class TranslationModConfig {
+        public final String name;
+        public final String key;
+        public final String detectionKey;
+        public final List<String> commands;
+
+        public TranslationModConfig(String name, String key, String detectionKey, List<String> commands) {
+            this.name = name;
+            this.key = key;
+            this.detectionKey = detectionKey;
+            this.commands = commands;
+        }
+    }
 
     public ConfigManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -50,23 +82,86 @@ public class ConfigManager {
         try {
             config.load(configFile);
 
-            blockedMods = new HashSet<>(config.getStringList("blocked-mods"));
-            whitelistedMods = new HashSet<>(config.getStringList("whitelisted-mods"));
-            enableWhitelistMode = config.getBoolean("whitelist-mode", false);
-            kickMessage = config.getString("kick-message",
-                "§c您使用的模组不被允许进入此服务器\n§6被检测到的模组: %mods%\n§e请移除这些模组后重新加入");
-
             debugMode = config.getBoolean("debug-mode", false);
-            fallbackServer = config.getString("fallback-server", "");
-            fallbackMessage = config.getString("fallback-message",
-                "§c您使用的模组不被允许进入此服务器\n§6被检测到的模组: %mods%\n§e正在将您传送到兼容服务器...");
 
-            plugin.getLogger().info("已加载 " + blockedMods.size() + " 个被阻止的模组");
-            plugin.getLogger().info("模式: " + (enableWhitelistMode ? "白名单模式" : "黑名单模式"));
-
+            loadChannelDetectConfig();
+            loadTranslationDetectConfig();
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "加载配置文件时出错", e);
         }
+    }
+
+    private void loadChannelDetectConfig() {
+        channelDetectEnabled = config.getBoolean("channel-detect.enabled", true);
+        channelNotifyStaff = config.getBoolean("channel-detect.notify-staff", true);
+        channelNotificationPermission = config.getString("channel-detect.notification-permission", "simplemoddetect.notify");
+
+        channelMods.clear();
+        ConfigurationSection modsSection = config.getConfigurationSection("channel-detect.mods");
+        if (modsSection != null) {
+            for (String modName : modsSection.getKeys(false)) {
+                ConfigurationSection modSection = modsSection.getConfigurationSection(modName);
+                if (modSection == null) {
+                    continue;
+                }
+
+                List<String> matches = new ArrayList<>(modSection.getStringList("matches"));
+                if (matches.isEmpty()) {
+                    matches.addAll(modSection.getStringList("channels"));
+                }
+
+                String singleMatch = modSection.getString("match");
+                if (matches.isEmpty() && singleMatch != null && !singleMatch.isBlank()) {
+                    matches.add(singleMatch);
+                }
+
+                String singleChannel = modSection.getString("channel");
+                if (matches.isEmpty() && singleChannel != null && !singleChannel.isBlank()) {
+                    matches.add(singleChannel);
+                }
+
+                if (matches.isEmpty()) {
+                    plugin.getLogger().warning("频道检测配置缺失 matches: " + modName);
+                    continue;
+                }
+
+                List<String> commands = new ArrayList<>(modSection.getStringList("commands"));
+                channelMods.add(new ChannelModConfig(modName, matches, commands));
+            }
+        }
+
+        plugin.getLogger().info("已加载 " + channelMods.size() + " 个频道检测模组配置");
+    }
+
+    private void loadTranslationDetectConfig() {
+        translationEnabled = config.getBoolean("translation-detect.enabled", true);
+        notifyStaff = config.getBoolean("translation-detect.notify-staff", true);
+        notificationPermission = config.getString("translation-detect.notification-permission", "simplemoddetect.notify");
+
+        translationMods.clear();
+        ConfigurationSection modsSection = config.getConfigurationSection("translation-detect.mods");
+        if (modsSection == null) {
+            return;
+        }
+
+        for (String modName : modsSection.getKeys(false)) {
+            ConfigurationSection modSection = modsSection.getConfigurationSection(modName);
+            if (modSection == null) {
+                continue;
+            }
+
+            String key = modSection.getString("key");
+            String detectionKey = modSection.getString("detectionKey");
+            if (key == null || detectionKey == null) {
+                plugin.getLogger().warning("翻译检测配置缺失 key 或 detectionKey: " + modName);
+                continue;
+            }
+
+            List<String> commands = new ArrayList<>(modSection.getStringList("commands"));
+            translationMods.add(new TranslationModConfig(modName, key, detectionKey, commands));
+        }
+
+        plugin.getLogger().info("已加载 " + translationMods.size() + " 个翻译检测模组配置");
     }
 
     public void saveConfig() {
@@ -82,11 +177,4 @@ public class ConfigManager {
         config.set("debug-mode", debugMode);
         saveConfig();
     }
-
-    public void setFallbackServer(String fallbackServer) {
-        this.fallbackServer = fallbackServer;
-        config.set("fallback-server", fallbackServer);
-        saveConfig();
-    }
 }
-

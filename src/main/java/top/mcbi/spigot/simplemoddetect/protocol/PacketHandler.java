@@ -160,6 +160,10 @@ public class PacketHandler {
     }
 
     private void extractModsFromRegisterChannels(Player player, List<String> channels) {
+        if (!plugin.getConfigManager().isChannelDetectEnabled()) {
+            return;
+        }
+
         Set<String> detectedMods = new LinkedHashSet<>();
 
         for (String channel : channels) {

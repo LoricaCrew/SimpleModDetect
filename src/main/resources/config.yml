@@ -3,39 +3,50 @@
 # 调试模式开关 (true/false)
 debug-mode: false
 
-# 黑名单模式 (false) 或白名单模式 (true)
-whitelist-mode: false
+# ==========================================
+# 频道检测方式 (通过 custom payload 注册通道检测)
+# ==========================================
+channel-detect:
+  enabled: true
+  notify-staff: true
+  notification-permission: "simplemoddetect.notify"
+  mods:
+    Servux:
+      # 检测到的频道前缀满足以下任一项时判定命中
+      # 可用变量: %player% %mod_name% %detected_mod%
+      matches:
+        - "servux"
+      commands:
+        - "litebans:kick %player% Malilib mod是不被允许的"
+    JourneyMap:
+      matches:
+        - "journeymap"
+      commands:
+        - "litebans:kick %player% JourneyMap mod是不被允许的"
+    Baritone:
+      matches:
+        - "baritone"
+      commands:
+        - "litebans:kick %player% Baritone是不被允许的"
 
-# Fallback服务器地址（留空则禁用Fallback功能）
-fallback-server: "Limbo"
-
-# Fallback服务器提示消息
-fallback-message: "§c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mods%\n§c请移除这些模组后重新加入\n\n§c注意：Tweakeroo等生电Mod是不被允许的\n§c如果你安装了，请一并删除Malilib"
-
-# 被阻止的模组列表（黑名单模式）
-blocked-mods:
-  - "servux"
-  - "journeymap"
-  - "litematica"
-  - "schematica"
-  - "wurst"
-  - "aristois"
-  - "impact"
-  - "meteor-client"
-  - "cheat-client"
-  - "hack-client"
-  - "baritone"
-  - "worlddownloader"
-
-# 允许的模组列表（白名单模式）
-whitelisted-mods:
-  - "fabric-api"
-  - "optifabric"
-  - "sodium"
-  - "iris"
-  - "lithium"
-  - "phosphor"
-  - "modmenu"
-
-# 踢出玩家时显示的消息（当Fallback服务器未设置时使用）
-kick-message: "§c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mods%\n§c请移除这些模组后重新加入\n\n§c注意：Tweakeroo等生电Mod是不被允许的\n§c如果你安装了，请一并删除Malilib"
+# ==========================================
+# 翻译键检测方式 (通过发送含有特定翻译键的告示牌检测)
+# 此方法通过在玩家加入时向其发送特制的告示牌数据包，要求客户端翻译指定的语言键并返回结果，以判断其是否安装了特定模组。
+# ==========================================
+translation-detect:
+  enabled: true
+  notify-staff: true
+  notification-permission: "simplemoddetect.notify"
+  mods:
+    Freecam:
+      key: "key.freecam.toggle"
+      detectionKey: "Toggle Freecam"
+      # 当检测到模组时，后台会按顺序执行以下指令。
+      # 可用变量: %player% %mod_name% %detected_value%
+      commands:
+        - "kick %player% Freecam是不被允许的"
+    ExampleMod:
+      key: "examplemod.lang.key"
+      detectionKey: "ExampleMod Key"
+      commands:
+        - "ban %player% 7d 使用了封禁模组"

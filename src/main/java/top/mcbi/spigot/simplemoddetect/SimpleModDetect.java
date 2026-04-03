@@ -8,6 +8,7 @@ import top.mcbi.spigot.simplemoddetect.commands.SimpleModDetectCommand;
 import top.mcbi.spigot.simplemoddetect.listeners.PlayerListener;
 import top.mcbi.spigot.simplemoddetect.managers.ConfigManager;
 import top.mcbi.spigot.simplemoddetect.managers.ModDetectionManager;
+import top.mcbi.spigot.simplemoddetect.managers.TranslationDetectionManager;
 import top.mcbi.spigot.simplemoddetect.nms.VersionAdapterManager;
 import top.mcbi.spigot.simplemoddetect.nms.VersionDetector;
 import top.mcbi.spigot.simplemoddetect.protocol.ChannelInjector;
@@ -23,6 +24,7 @@ public class SimpleModDetect extends JavaPlugin {
     private PacketHandler packetHandler;
     private ChannelInjector channelInjector;
     private ModDetectionManager modDetectionManager;
+    private TranslationDetectionManager translationDetectionManager;
     private SimpleModDetectCommand simpleModDetectCommand;
 
     @Override
@@ -47,6 +49,9 @@ public class SimpleModDetect extends JavaPlugin {
         // 初始化Mod检测管理器
         modDetectionManager = new ModDetectionManager(this, modChecker);
 
+        // 初始化翻译检测管理器
+        translationDetectionManager = new TranslationDetectionManager(this);
+
         // 初始化数据包处理器
         packetHandler = new PacketHandler(this, modChecker);
 
@@ -68,6 +73,7 @@ public class SimpleModDetect extends JavaPlugin {
         Bukkit.getScheduler().runTaskLater(this, () -> {
             for (Player player : Bukkit.getOnlinePlayers()) {
                 channelInjector.injectPlayer(player);
+                translationDetectionManager.checkPlayer(player);
             }
         }, 20L);
 
@@ -75,9 +81,8 @@ public class SimpleModDetect extends JavaPlugin {
         getLogger().info("服务器版本: " + serverVersion);
         getLogger().info("使用适配器: " + VersionAdapterManager.getAdapter().getVersionName());
         getLogger().info("调试模式: " + (configManager.isDebugMode() ? "开启" : "关闭"));
-        if (configManager.getFallbackServer() != null && !configManager.getFallbackServer().isEmpty()) {
-            getLogger().info("Fallback服务器: " + configManager.getFallbackServer());
-        }
+        getLogger().info("频道检测: " + (configManager.isChannelDetectEnabled() ? "开启" : "关闭"));
+        getLogger().info("翻译检测: " + (configManager.isTranslationEnabled() ? "开启" : "关闭"));
     }
 
     @Override
@@ -87,6 +92,15 @@ public class SimpleModDetect extends JavaPlugin {
             for (Player player : Bukkit.getOnlinePlayers()) {
                 try {
                     channelInjector.removePlayer(player);
+                } catch (Exception e) {
+                    // 忽略错误
+                }
+            }
+        }
+        if (translationDetectionManager != null) {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                try {
+                    translationDetectionManager.removePlayer(player.getUniqueId());
                 } catch (Exception e) {
                     // 忽略错误
                 }
