@@ -1,5 +1,6 @@
 package top.mcbi.spigot.simplemoddetect.managers;
 
+import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -17,6 +18,7 @@ public class ModDetectionManager {
     private final SimpleModDetect plugin;
     private final ModChecker modChecker;
     private final Map<String, List<String>> playerMods = new HashMap<>();
+    @Getter
     private final Map<String, List<String>> playerChannels = new HashMap<>();
 
     public ModDetectionManager(SimpleModDetect plugin, ModChecker modChecker) {

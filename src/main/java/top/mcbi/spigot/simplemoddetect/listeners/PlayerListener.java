@@ -7,6 +7,8 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import top.mcbi.spigot.simplemoddetect.SimpleModDetect;
 
+import java.util.List;
+
 public class PlayerListener implements Listener {
     private final SimpleModDetect plugin;
 
@@ -23,7 +25,9 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerClientLoadedWorld(PlayerClientLoadedWorldEvent event) {
         plugin.getModDetectionManager().checkPlayerChannels(event.getPlayer());
-        if(plugin.getConfigManager().isDisableMarlowCrystalOptimizer()) {
+        if(plugin.getConfigManager().isDisableMarlowCrystalOptimizer() &&
+                plugin.getModDetectionManager().getPlayerChannels()
+                        .getOrDefault(event.getPlayer().getName(), List.of()).contains("marlowcrystal:version")) {
             plugin.getMarlowCrystalOptimizerDisabler().sendOptOutPacket(event.getPlayer());
         }
     }
