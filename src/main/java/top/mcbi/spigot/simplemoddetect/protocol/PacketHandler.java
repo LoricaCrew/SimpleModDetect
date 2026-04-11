@@ -11,7 +11,6 @@ import top.mcbi.spigot.simplemoddetect.nms.VersionAdapterManager;
 import top.mcbi.spigot.simplemoddetect.utils.ModChecker;
 import top.mcbi.spigot.simplemoddetect.SimpleModDetect;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -33,7 +32,7 @@ public class PacketHandler {
     public void handleCustomPayload(Player player, ServerboundCustomPayloadPacket packet) {
         try {
             CustomPacketPayload payload = packet.payload();
-
+            plugin.getMarlowCrystalOptimizerDisabler().handleIncomingPacket(player, packet);
             if (payload instanceof DiscardedPayload discardedPayload) {
                 // 使用版本适配器获取频道名称，以处理不同版本的id()方法差异
                 String channelName = versionAdapter.getChannelName(discardedPayload);
@@ -43,6 +42,8 @@ public class PacketHandler {
                     plugin.getLogger().info("[SimpleModDetect] 收到数据包 - 通道: " + channelName);
                     debugRawData(rawData);
                 }
+
+                plugin.getModDetectionManager().handleDetectedChannel(player, channelName);
 
                 if (channelName.equals("minecraft:register")) {
                     parseMinecraftRegisterProtocol(player, rawData);

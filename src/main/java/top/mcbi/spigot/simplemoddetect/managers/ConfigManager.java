@@ -31,6 +31,9 @@ public class ConfigManager {
     private final List<ChannelModConfig> channelMods = new ArrayList<>();
 
     @Getter
+    private boolean disableMarlowCrystalOptimizer;
+
+    @Getter
     private boolean translationEnabled;
     @Getter
     private boolean notifyStaff;
@@ -81,6 +84,7 @@ public class ConfigManager {
             config.load(configFile);
 
             debugMode = config.getBoolean("debug-mode", false);
+            disableMarlowCrystalOptimizer = config.getBoolean("disable-marlow-crystal-optimizer", true);
 
             loadChannelDetectConfig();
             loadTranslationDetectConfig();

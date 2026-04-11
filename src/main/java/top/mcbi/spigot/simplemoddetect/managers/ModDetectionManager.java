@@ -8,6 +8,7 @@ import top.mcbi.spigot.simplemoddetect.SimpleModDetect;
 import top.mcbi.spigot.simplemoddetect.managers.ConfigManager.ChannelModConfig;
 import top.mcbi.spigot.simplemoddetect.utils.ModChecker;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,10 +17,45 @@ public class ModDetectionManager {
     private final SimpleModDetect plugin;
     private final ModChecker modChecker;
     private final Map<String, List<String>> playerMods = new HashMap<>();
+    private final Map<String, List<String>> playerChannels = new HashMap<>();
 
     public ModDetectionManager(SimpleModDetect plugin, ModChecker modChecker) {
         this.plugin = plugin;
         this.modChecker = modChecker;
+    }
+
+    public void handleDetectedChannel(Player player, String channel) {
+        if(!playerChannels.containsKey(player.getName())) {
+            playerChannels.put(player.getName(), new ArrayList<>());
+        }
+        List<String> channels = playerChannels.get(player.getName());
+        channels.add(channel);
+    }
+
+    public void checkPlayerChannels(Player player) {
+        if(!playerChannels.containsKey(player.getName())) {
+            playerChannels.put(player.getName(), new ArrayList<>());
+        }
+        List<String> channels = playerChannels.get(player.getName());
+        List<ChannelModConfig> matchedConfigs = modChecker.checkMods(channels);
+        if(matchedConfigs.isEmpty()) {
+            plugin.getLogger().warning("玩家 %s 频道名检查通过，共有 %d 个频道 %c"
+                    .formatted(player.getName(), channels.size(), channels.isEmpty() ? '。' : ':'));
+            if (plugin.getConfigManager().isDebugMode()) {
+                for (String channel : channels) {
+                    plugin.getLogger().info("  - %s"
+                            .formatted(channel));
+                }
+            }
+            return;
+        }
+
+        for (ChannelModConfig config : matchedConfigs) {
+            String detectedMod = modChecker.findMatchedModId(config, channels);
+            plugin.getLogger().warning("玩家 " + player.getName() + " 被检测到频道 " + config.name + "，实际标识: " + detectedMod);
+            notifyStaff("玩家 " + player.getName() + " 被检测到使用 " + config.name + " (" + detectedMod + ")");
+            executeCommands(player, config, detectedMod);
+        }
     }
 
     public void handleDetectedMods(Player player, List<String> mods) {
@@ -44,7 +80,7 @@ public class ModDetectionManager {
         }
     }
 
-    private void executeCommands(Player player, ChannelModConfig config, String detectedMod) {
+    public void executeCommands(Player player, ChannelModConfig config, String detectedMod) {
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (config.commands == null || config.commands.isEmpty()) {
                 return;
@@ -60,7 +96,7 @@ public class ModDetectionManager {
         });
     }
 
-    private void notifyStaff(String message) {
+    public void notifyStaff(String message) {
         ConfigManager config = plugin.getConfigManager();
         if (!config.isChannelNotifyStaff()) {
             return;

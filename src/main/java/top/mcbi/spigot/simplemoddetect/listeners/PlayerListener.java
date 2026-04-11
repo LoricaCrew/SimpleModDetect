@@ -1,5 +1,6 @@
 package top.mcbi.spigot.simplemoddetect.listeners;
 
+import io.papermc.paper.event.player.PlayerClientLoadedWorldEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -17,6 +18,14 @@ public class PlayerListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         plugin.getChannelInjector().injectPlayer(event.getPlayer());
         plugin.getTranslationDetectionManager().checkPlayer(event.getPlayer());
+    }
+
+    @EventHandler
+    public void onPlayerClientLoadedWorld(PlayerClientLoadedWorldEvent event) {
+        plugin.getModDetectionManager().checkPlayerChannels(event.getPlayer());
+        if(plugin.getConfigManager().isDisableMarlowCrystalOptimizer()) {
+            plugin.getMarlowCrystalOptimizerDisabler().sendOptOutPacket(event.getPlayer());
+        }
     }
 
     @EventHandler
