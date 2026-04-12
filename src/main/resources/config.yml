@@ -30,7 +30,7 @@ channel-detect:
         - "litebans:kick %player% Baritone是不被允许的"
     MarlowCrystalLegacy:
       matches:
-        - "mco"
+        - "minecraft:mco"
       commands:
         - "litebans:kick %player% 请使用1.0.5或以上版本的Marlow's Crystal Optimizer"
 
