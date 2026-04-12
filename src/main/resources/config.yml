@@ -131,3 +131,11 @@ translation-detect:
       key: "key.name_visibility.toggleNames"
       commands:
         - "litebans:kick %player% 检测到违规模组: %mod_name%"
+    JourneyMap:
+      key: "jm.advanced.automappoll"
+      commands:
+        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+    VoxelMap:
+      key: "minimap.ui.north"
+      commands:
+        - "litebans:kick %player% 检测到违规模组: %mod_name%"
