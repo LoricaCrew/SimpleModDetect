@@ -35,12 +35,12 @@ public class ModDetectionManager {
     }
 
     public void checkPlayerChannels(Player player) {
-        if(!playerChannels.containsKey(player.getName())) {
+        if (!playerChannels.containsKey(player.getName())) {
             playerChannels.put(player.getName(), new ArrayList<>());
         }
         List<String> channels = playerChannels.get(player.getName());
         List<ChannelModConfig> matchedConfigs = modChecker.checkMods(channels);
-        if(matchedConfigs.isEmpty()) {
+        if (matchedConfigs.isEmpty()) {
             plugin.getLogger().warning("玩家 %s 频道名检查通过，共有 %d 个频道 %c"
                     .formatted(player.getName(), channels.size(), channels.isEmpty() ? '。' : ':'));
             if (plugin.getConfigManager().isDebugMode()) {
@@ -56,7 +56,7 @@ public class ModDetectionManager {
             String detectedMod = modChecker.findMatchedModId(config, channels);
             plugin.getLogger().warning("玩家 " + player.getName() + " 被检测到频道 " + config.name + "，实际标识: " + detectedMod);
             notifyStaff("玩家 " + player.getName() + " 被检测到使用 " + config.name + " (" + detectedMod + ")");
-            executeCommands(player, config, detectedMod);
+            executePunishment(player, config, detectedMod);
         }
     }
 
@@ -78,24 +78,16 @@ public class ModDetectionManager {
             String detectedMod = modChecker.findMatchedModId(config, mods);
             plugin.getLogger().warning("玩家 " + player.getName() + " 被检测到使用频道模组 " + config.name + "，实际标识: " + detectedMod);
             notifyStaff("玩家 " + player.getName() + " 被检测到使用 " + config.name + " (" + detectedMod + ")");
-            executeCommands(player, config, detectedMod);
+            executePunishment(player, config, detectedMod);
         }
     }
 
-    public void executeCommands(Player player, ChannelModConfig config, String detectedMod) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            if (config.commands == null || config.commands.isEmpty()) {
-                return;
-            }
-
-            for (String command : config.commands) {
-                String finalCommand = command
-                    .replace("%player%", player.getName())
-                    .replace("%mod_name%", config.name)
-                    .replace("%detected_mod%", detectedMod);
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand);
-            }
-        });
+    public void executePunishment(Player player, ChannelModConfig config, String detectedMod) {
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("%player%", player.getName());
+        placeholders.put("%mod_name%", config.name);
+        placeholders.put("%detected_mod%", detectedMod);
+        plugin.getPunishmentExecutor().execute(player, plugin.getConfigManager().getChannelAction(), placeholders);
     }
 
     public void notifyStaff(String message) {

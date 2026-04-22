@@ -2,7 +2,9 @@ package top.mcbi.spigot.simplemoddetect.managers;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
@@ -16,14 +18,46 @@ import org.bukkit.event.block.SignChangeEvent;
 import top.mcbi.spigot.simplemoddetect.SimpleModDetect;
 import top.mcbi.spigot.simplemoddetect.managers.ConfigManager.TranslationModConfig;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 
 public class TranslationDetectionManager implements Listener {
+    private static final int BATCH_SIZE = 4;
+    private static final String LINE_PREFIX = "[SMD] ";
+    private static final PlainTextComponentSerializer PLAIN_TEXT_SERIALIZER = PlainTextComponentSerializer.plainText();
+
     private final SimpleModDetect plugin;
-    private final Map<UUID, BlockData> originalBlockData = new HashMap<>();
+    private final Map<UUID, TranslationCheckSession> sessions = new HashMap<>();
+
+    private static class TranslationCheckSession {
+        private final Location signLocation;
+        private final BlockData originalBlockData;
+        private final List<TranslationModConfig> pendingMods;
+        private List<TranslationModConfig> currentBatch = List.of();
+        private boolean finished;
+
+        private TranslationCheckSession(Location signLocation, BlockData originalBlockData, List<TranslationModConfig> pendingMods) {
+            this.signLocation = signLocation;
+            this.originalBlockData = originalBlockData;
+            this.pendingMods = pendingMods;
+        }
+
+        private boolean hasPendingMods() {
+            return !pendingMods.isEmpty();
+        }
+
+        private List<TranslationModConfig> nextBatch() {
+            int size = Math.min(BATCH_SIZE, pendingMods.size());
+            List<TranslationModConfig> batch = new ArrayList<>(pendingMods.subList(0, size));
+            pendingMods.subList(0, size).clear();
+            currentBatch = batch;
+            return batch;
+        }
+    }
 
     public TranslationDetectionManager(SimpleModDetect plugin) {
         this.plugin = plugin;
@@ -36,26 +70,52 @@ public class TranslationDetectionManager implements Listener {
             return;
         }
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> openSignEditor(player), 10L);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> startCheck(player), 10L);
     }
 
-    private void openSignEditor(Player player) {
-        try {
-            Block block = player.getLocation().clone().add(0.0, -5.0, 0.0).getBlock();
-            BlockData originalBlockType = block.getBlockData();
-            UUID uuid = player.getUniqueId();
-            originalBlockData.put(uuid, originalBlockType);
+    private void startCheck(Player player) {
+        if (!player.isOnline()) {
+            return;
+        }
 
+        Block block = player.getLocation().clone().add(0.0, -5.0, 0.0).getBlock();
+        TranslationCheckSession previousSession = sessions.remove(player.getUniqueId());
+        if (previousSession != null) {
+            previousSession.signLocation.getBlock().setBlockData(previousSession.originalBlockData, false);
+        }
+
+        TranslationCheckSession session = new TranslationCheckSession(
+            block.getLocation(),
+            block.getBlockData(),
+            new ArrayList<>(plugin.getConfigManager().getTranslationMods())
+        );
+        sessions.put(player.getUniqueId(), session);
+        openNextBatch(player, session);
+    }
+
+    private void openNextBatch(Player player, TranslationCheckSession session) {
+        if (!player.isOnline() || session.finished || !session.hasPendingMods()) {
+            finishSession(player.getUniqueId(), player);
+            return;
+        }
+
+        try {
+            Block block = session.signLocation.getBlock();
+            UUID uuid = player.getUniqueId();
             block.setType(Material.OAK_SIGN, false);
             if (block.getState() instanceof Sign sign) {
                 try {
-                    Component content = Component.empty();
-                    for (TranslationModConfig config : plugin.getConfigManager().getTranslationMods()) {
-                        content = content.append(Component.text(" TTT: ").append(Component.translatable(config.key)));
-                    }
+                    List<TranslationModConfig> batch = session.nextBatch();
 
                     SignSide backSide = sign.getSide(Side.BACK);
-                    backSide.line(0, content);
+                    for (int i = 0; i < BATCH_SIZE; i++) {
+                        if (i < batch.size()) {
+                            TranslationModConfig config = batch.get(i);
+                            backSide.line(i, Component.text(LINE_PREFIX).append(Component.translatable(config.key)));
+                        } else {
+                            backSide.line(i, Component.empty());
+                        }
+                    }
 
                     sign.update(false, false);
                     sign.setAllowedEditorUniqueId(uuid);
@@ -68,10 +128,14 @@ public class TranslationDetectionManager implements Listener {
                     }, 5L);
                 } catch (Exception e) {
                     plugin.getLogger().log(Level.SEVERE, "Failed to use adventure API for sign", e);
+                    finishSession(uuid, player);
                 }
+            } else {
+                finishSession(uuid, player);
             }
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to open sign editor: " + e.getMessage(), e);
+            finishSession(player.getUniqueId(), player);
         }
     }
 
@@ -79,47 +143,50 @@ public class TranslationDetectionManager implements Listener {
     public void onSignChange(SignChangeEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
-        
-        if (originalBlockData.containsKey(uuid)) {
-            // Restore original block
-            BlockData blockData = originalBlockData.remove(uuid);
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                event.getBlock().setBlockData(blockData, false);
-            });
 
-            // Parse result
-            try {
-                Component line0 = event.line(0);
-                if (line0 != null) {
-                    String signContent = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(line0);
+        TranslationCheckSession session = sessions.get(uuid);
+        if (session == null) {
+            return;
+        }
 
-                    for (TranslationModConfig config : plugin.getConfigManager().getTranslationMods()) {
-                        if (!signContent.contains("TTT: " + config.key)) {
-                            handleModDetection(player, config, signContent);
-                        }
-                    }
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            session.signLocation.getBlock().setBlockData(session.originalBlockData, false);
+        });
+
+        try {
+            boolean detected = false;
+            for (int i = 0; i < session.currentBatch.size(); i++) {
+                TranslationModConfig config = session.currentBatch.get(i);
+                Component line = event.line(i);
+                String signContent = line == null ? "" : PLAIN_TEXT_SERIALIZER.serialize(line);
+                if (!signContent.contains(LINE_PREFIX + config.key)) {
+                    handleModDetection(player, config, signContent);
+                    detected = true;
                 }
-            } catch (Exception e) {
-                plugin.getLogger().log(Level.WARNING, "Failed to parse sign content", e);
             }
+
+            if (detected) {
+                session.finished = true;
+                finishSession(uuid, player);
+                return;
+            }
+
+            Bukkit.getScheduler().runTaskLater(plugin, () -> openNextBatch(player, session), 5L);
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to parse sign content", e);
+            finishSession(uuid, player);
         }
     }
 
     private void handleModDetection(Player player, TranslationModConfig config, String detectedValue) {
         plugin.getLogger().info("玩家 " + player.getName() + " 被检测到使用 " + config.name);
         notifyStaff("玩家 " + player.getName() + " 正在使用 " + config.name);
-        
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            if (config.commands != null && !config.commands.isEmpty()) {
-                for (String cmd : config.commands) {
-                    String finalCmd = cmd
-                        .replace("%player%", player.getName())
-                        .replace("%mod_name%", config.name)
-                        .replace("%detected_value%", detectedValue);
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd);
-                }
-            }
-        });
+
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("%player%", player.getName());
+        placeholders.put("%mod_name%", config.name);
+        placeholders.put("%detected_value%", detectedValue);
+        plugin.getPunishmentExecutor().execute(player, plugin.getConfigManager().getTranslationAction(), placeholders);
     }
 
     private void notifyStaff(String message) {
@@ -135,15 +202,18 @@ public class TranslationDetectionManager implements Listener {
     }
 
     public void removePlayer(UUID uuid) {
-        if (originalBlockData.containsKey(uuid)) {
-            BlockData blockData = originalBlockData.remove(uuid);
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null) {
-                Block block = player.getLocation().clone().add(0.0, -5.0, 0.0).getBlock();
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    block.setBlockData(blockData, false);
-                });
-            }
+        Player player = Bukkit.getPlayer(uuid);
+        finishSession(uuid, player);
+    }
+
+    private void finishSession(UUID uuid, Player player) {
+        TranslationCheckSession session = sessions.remove(uuid);
+        if (session == null || player == null) {
+            return;
         }
+
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            session.signLocation.getBlock().setBlockData(session.originalBlockData, false);
+        });
     }
 }

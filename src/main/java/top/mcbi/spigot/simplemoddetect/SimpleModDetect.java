@@ -15,6 +15,7 @@ import top.mcbi.spigot.simplemoddetect.protocol.ChannelInjector;
 import top.mcbi.spigot.simplemoddetect.protocol.PacketHandler;
 import top.mcbi.spigot.simplemoddetect.utils.MarlowCrystalOptimizerDisabler;
 import top.mcbi.spigot.simplemoddetect.utils.ModChecker;
+import top.mcbi.spigot.simplemoddetect.utils.PunishmentExecutor;
 
 @Getter
 public class SimpleModDetect extends JavaPlugin {
@@ -28,6 +29,7 @@ public class SimpleModDetect extends JavaPlugin {
     private TranslationDetectionManager translationDetectionManager;
     private SimpleModDetectCommand simpleModDetectCommand;
     private MarlowCrystalOptimizerDisabler marlowCrystalOptimizerDisabler;
+    private PunishmentExecutor punishmentExecutor;
 
     @Override
     public void onEnable() {
@@ -47,6 +49,8 @@ public class SimpleModDetect extends JavaPlugin {
 
         // 初始化Mod检查器
         modChecker = new ModChecker(configManager);
+
+        punishmentExecutor = new PunishmentExecutor(this);
 
         // 初始化Mod检测管理器
         modDetectionManager = new ModDetectionManager(this, modChecker);

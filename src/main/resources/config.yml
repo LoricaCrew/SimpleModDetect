@@ -10,29 +10,30 @@ channel-detect:
   enabled: true
   notify-staff: true
   notification-permission: "simplemoddetect.notify"
+  # 统一惩罚行为，可选 COMMAND 或 SEND
+  # 可用变量: %player% %mod_name% %detected_mod%
+  action:
+    type: COMMAND
+    commands:
+      - "litebans:kick %player% §c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mod_name%\n§c请移除这些模组后重新加入"
+  #  action:
+  #    type: SEND
+  #    server: "Limbo"
+  #    message: "§c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mod_name%\n§c请移除这些模组后重新加入"
   mods:
     Servux:
       # 检测到的频道前缀满足以下任一项时判定命中
-      # 可用变量: %player% %mod_name% %detected_mod%
       matches:
         - "servux"
-      commands:
-        - "litebans:kick %player% Malilib mod是不被允许的"
     JourneyMap:
       matches:
         - "journeymap"
-      commands:
-        - "litebans:kick %player% JourneyMap mod是不被允许的"
     Baritone:
       matches:
         - "baritone"
-      commands:
-        - "litebans:kick %player% Baritone是不被允许的"
-    MarlowCrystalLegacy:
-      matches:
-        - "minecraft:mco"
-      commands:
-        - "litebans:kick %player% 请使用1.0.5或以上版本的Marlow's Crystal Optimizer"
+#    MarlowCrystalOptimizer:
+#      matches:
+#        - "minecraft:mco"
 
 # ==========================================
 # 翻译键检测方式 (通过发送含有特定翻译键的告示牌检测)
@@ -42,128 +43,76 @@ translation-detect:
   enabled: true
   notify-staff: true
   notification-permission: "simplemoddetect.notify"
+  # 统一惩罚行为，可选 COMMAND 或 SEND
+  # 可用变量: %player% %mod_name% %detected_value%
+  action:
+    type: COMMAND
+    commands:
+      - "litebans:kick %player% §c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mod_name%\n§c请移除这些模组后重新加入"
+#  action:
+#    type: SEND
+#    server: "Limbo"
+#    message: "§c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mod_name%\n§c请移除这些模组后重新加入"
   mods:
     MeteorClient:
       key: "key.meteor-client.open-gui"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     Tweakeroo:
       key: "tweakeroo.config.tab.tweaks"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     TweakerMore:
       key: "tweakermore.hotkeys.category.main"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     ItemScroller:
       key: "itemscroller.config.tab.generic"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     MaLiLib:
       key: "malilib.on"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     Litematica:
       key: "litematica.gui.button.config"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     Freecam:
       key: "key.freecam.toggle"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     InventoryProfilesNext:
       key: "inventoryprofiles.gui.config.title"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     ViaFabric:
       key: "gui.protocol_version_field.name"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     SeedCrackerX:
       key: "cracker.enabled"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     NameTagTweaks:
       key: "nametagtweaks.key.open_settings"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     HealthIndicators:
       key: "key.categories.healthindicators"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     BetterNameVisibility:
       key: "key.name_visibility.toggleNames"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     JourneyMap:
       key: "jm.advanced.automappoll"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     VoxelMap:
       key: "minimap.ui.north"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     AccurateBlockPlacement:
       key: "key.category.accurateblockplacement.category"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     QuickSwap:
       key: "key.SwapInventory.QAQ"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     Jade:
       key: "modmenu.nameTranslation.jade"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     InvMove:
       key: "config.invmove.title"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
 #    XaerosMinimap:
 #      key: "gui.xaero_delete"
-#      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
 #    XaerosWorldmap:
 #      key: "gui.xaero_open_map"
-#      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
 #    ViaFabricPlus:
 #      key: "base.viafabricplus.on"
-#      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
 #    Carpet:
 #      key: "carpet.rule.carpets.name"
-#      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
 #    ElytraPitch:
 #      key: "text.autoconfig.elytrapitch.title"
-#      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
 #    ClientTime:
 #      key: "category.clienttime"
-#      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
 #    CnTierTagger:
 #      key: "text.autoconfig.cntiertagger.title"
-#      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
 #    ReachDisplay:
 #      key: "reach_display.midnightconfig.title"
-#      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
 #    Skyboxify:
 #      key: "options.skyboxify.title"
-#      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
 #    ShulkerBoxTooltip:
 #      key: "container.shulkerbox.contains"
-#      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
 #    CustomCrosshair:
 #      key: "key.category.custom_crosshair_mod.key_bindings"
-#      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
 #    GammaUtils:
 #      key: "key.category.gammautils.gamma"
-#      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"

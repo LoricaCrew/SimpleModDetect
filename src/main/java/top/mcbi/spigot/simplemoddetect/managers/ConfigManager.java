@@ -9,6 +9,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.logging.Level;
 
 public class ConfigManager {
@@ -28,6 +29,8 @@ public class ConfigManager {
     @Getter
     private String channelNotificationPermission;
     @Getter
+    private PunishmentAction channelAction;
+    @Getter
     private final List<ChannelModConfig> channelMods = new ArrayList<>();
 
     @Getter
@@ -40,29 +43,46 @@ public class ConfigManager {
     @Getter
     private String notificationPermission;
     @Getter
+    private PunishmentAction translationAction;
+    @Getter
     private final List<TranslationModConfig> translationMods = new ArrayList<>();
+
+    public enum PunishmentType {
+        SEND,
+        COMMAND
+    }
+
+    public static class PunishmentAction {
+        public final PunishmentType type;
+        public final List<String> commands;
+        public final String server;
+        public final String message;
+
+        public PunishmentAction(PunishmentType type, List<String> commands, String server, String message) {
+            this.type = type;
+            this.commands = commands;
+            this.server = server;
+            this.message = message;
+        }
+    }
 
     public static class ChannelModConfig {
         public final String name;
         public final List<String> matches;
-        public final List<String> commands;
 
-        public ChannelModConfig(String name, List<String> matches, List<String> commands) {
+        public ChannelModConfig(String name, List<String> matches) {
             this.name = name;
             this.matches = matches;
-            this.commands = commands;
         }
     }
 
     public static class TranslationModConfig {
         public final String name;
         public final String key;
-        public final List<String> commands;
 
-        public TranslationModConfig(String name, String key, List<String> commands) {
+        public TranslationModConfig(String name, String key) {
             this.name = name;
             this.key = key;
-            this.commands = commands;
         }
     }
 
@@ -97,6 +117,7 @@ public class ConfigManager {
         channelDetectEnabled = config.getBoolean("channel-detect.enabled", true);
         channelNotifyStaff = config.getBoolean("channel-detect.notify-staff", true);
         channelNotificationPermission = config.getString("channel-detect.notification-permission", "simplemoddetect.notify");
+        channelAction = parsePunishmentAction(config.getConfigurationSection("channel-detect"), "频道检测");
 
         channelMods.clear();
         ConfigurationSection modsSection = config.getConfigurationSection("channel-detect.mods");
@@ -127,8 +148,7 @@ public class ConfigManager {
                     continue;
                 }
 
-                List<String> commands = new ArrayList<>(modSection.getStringList("commands"));
-                channelMods.add(new ChannelModConfig(modName, matches, commands));
+                channelMods.add(new ChannelModConfig(modName, matches));
             }
         }
 
@@ -139,6 +159,7 @@ public class ConfigManager {
         translationEnabled = config.getBoolean("translation-detect.enabled", true);
         notifyStaff = config.getBoolean("translation-detect.notify-staff", true);
         notificationPermission = config.getString("translation-detect.notification-permission", "simplemoddetect.notify");
+        translationAction = parsePunishmentAction(config.getConfigurationSection("translation-detect"), "翻译检测");
 
         translationMods.clear();
         ConfigurationSection modsSection = config.getConfigurationSection("translation-detect.mods");
@@ -158,8 +179,7 @@ public class ConfigManager {
                 continue;
             }
 
-            List<String> commands = new ArrayList<>(modSection.getStringList("commands"));
-            translationMods.add(new TranslationModConfig(modName, key, commands));
+            translationMods.add(new TranslationModConfig(modName, key));
         }
 
         plugin.getLogger().info("已加载 " + translationMods.size() + " 个翻译检测模组配置");
@@ -177,5 +197,51 @@ public class ConfigManager {
         this.debugMode = debugMode;
         config.set("debug-mode", debugMode);
         saveConfig();
+    }
+
+    private PunishmentAction parsePunishmentAction(ConfigurationSection detectSection, String detectType) {
+        if (detectSection == null) {
+            plugin.getLogger().warning(detectType + "配置缺失配置节点");
+            return null;
+        }
+
+        ConfigurationSection actionSection = detectSection.getConfigurationSection("action");
+        if (actionSection == null) {
+            List<String> legacyCommands = new ArrayList<>(detectSection.getStringList("commands"));
+            if (!legacyCommands.isEmpty()) {
+                return new PunishmentAction(PunishmentType.COMMAND, legacyCommands, null, null);
+            }
+
+            plugin.getLogger().warning(detectType + "配置缺失 action");
+            return null;
+        }
+
+        String rawType = actionSection.getString("type", "COMMAND");
+        PunishmentType type;
+        try {
+            type = PunishmentType.valueOf(rawType.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            plugin.getLogger().warning(detectType + "配置 action.type 无效: " + rawType);
+            return null;
+        }
+
+        if (type == PunishmentType.COMMAND) {
+            List<String> commands = new ArrayList<>(actionSection.getStringList("commands"));
+            if (commands.isEmpty()) {
+                plugin.getLogger().warning(detectType + "配置的 COMMAND 动作缺失 commands");
+                return null;
+            }
+
+            return new PunishmentAction(type, commands, null, null);
+        }
+
+        String server = actionSection.getString("server");
+        if (server == null || server.isBlank()) {
+            plugin.getLogger().warning(detectType + "配置的 SEND 动作缺失 server");
+            return null;
+        }
+
+        String message = actionSection.getString("message", "");
+        return new PunishmentAction(type, List.of(), server, message);
     }
 }
