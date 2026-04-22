@@ -51,11 +51,19 @@ translation-detect:
       key: "tweakeroo.config.tab.tweaks"
       commands:
         - "litebans:kick %player% 检测到违规模组: %mod_name%"
+    TweakerMore:
+      key: "tweakermore.hotkeys.category.main"
+      commands:
+        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+    ItemScroller:
+      key: "itemscroller.config.tab.generic"
+      commands:
+        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     MaLiLib:
       key: "malilib.on"
       commands:
         - "litebans:kick %player% 检测到违规模组: %mod_name%"
-    LiteMatica:
+    Litematica:
       key: "litematica.gui.button.config"
       commands:
         - "litebans:kick %player% 检测到违规模组: %mod_name%"
@@ -67,16 +75,8 @@ translation-detect:
       key: "inventoryprofiles.gui.config.title"
       commands:
         - "litebans:kick %player% 检测到违规模组: %mod_name%"
-    XaerosMinimap:
-      key: "gui.xaero_delete"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
-    XaerosWorldmap:
-      key: "gui.xaero_open_map"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
-    ViaFabricPlus:
-      key: "base.viafabricplus.on"
+    ViaFabric:
+      key: "gui.protocol_version_field.name"
       commands:
         - "litebans:kick %player% 检测到违规模组: %mod_name%"
     SeedCrackerX:
@@ -86,47 +86,11 @@ translation-detect:
     NameTagTweaks:
       key: "nametagtweaks.key.open_settings"
       commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
-    GammaUtils:
-      key: "key.category.gammautils.gamma"
-      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     HealthIndicators:
       key: "key.categories.healthindicators"
       commands:
         - "litebans:kick %player% 检测到违规模组: %mod_name%"
-    Carpet:
-      key: "carpet.rule.carpets.name"
-      commands:
-        - "litebans:kick %player% 检测到违规模组: %mod_name%"
-    ElytraPitch:
-      key: "text.autoconfig.elytrapitch.title"
-      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
-    ClientTime:
-      key: "category.clienttime"
-      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
-    CnTierTagger:
-      key: "text.autoconfig.cntiertagger.title"
-      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
-    ReachDisplay:
-      key: "reach_display.midnightconfig.title"
-      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
-    Skyboxify:
-      key: "options.skyboxify.title"
-      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
-    ShulkerBoxTooltip:
-      key: "container.shulkerbox.contains"
-      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
-    CustomCrosshair:
-      key: "key.category.custom_crosshair_mod.key_bindings"
-      commands:
-#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
     BetterNameVisibility:
       key: "key.name_visibility.toggleNames"
       commands:
@@ -139,3 +103,67 @@ translation-detect:
       key: "minimap.ui.north"
       commands:
         - "litebans:kick %player% 检测到违规模组: %mod_name%"
+    AccurateBlockPlacement:
+      key: "key.category.accurateblockplacement.category"
+      commands:
+        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+    QuickSwap:
+      key: "key.SwapInventory.QAQ"
+      commands:
+        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+    Jade:
+      key: "modmenu.nameTranslation.jade"
+      commands:
+        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+    InvMove:
+      key: "config.invmove.title"
+      commands:
+        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+#    XaerosMinimap:
+#      key: "gui.xaero_delete"
+#      commands:
+#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+#    XaerosWorldmap:
+#      key: "gui.xaero_open_map"
+#      commands:
+#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+#    ViaFabricPlus:
+#      key: "base.viafabricplus.on"
+#      commands:
+#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+#    Carpet:
+#      key: "carpet.rule.carpets.name"
+#      commands:
+#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+#    ElytraPitch:
+#      key: "text.autoconfig.elytrapitch.title"
+#      commands:
+#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+#    ClientTime:
+#      key: "category.clienttime"
+#      commands:
+#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+#    CnTierTagger:
+#      key: "text.autoconfig.cntiertagger.title"
+#      commands:
+#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+#    ReachDisplay:
+#      key: "reach_display.midnightconfig.title"
+#      commands:
+#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+#    Skyboxify:
+#      key: "options.skyboxify.title"
+#      commands:
+#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+#    ShulkerBoxTooltip:
+#      key: "container.shulkerbox.contains"
+#      commands:
+#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+#    CustomCrosshair:
+#      key: "key.category.custom_crosshair_mod.key_bindings"
+#      commands:
+#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
+#    GammaUtils:
+#      key: "key.category.gammautils.gamma"
+#      commands:
+#        - "litebans:kick %player% 检测到违规模组: %mod_name%"
