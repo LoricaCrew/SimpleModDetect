@@ -156,13 +156,21 @@ public class TranslationDetectionManager implements Listener {
         });
 
         try {
+            boolean detectedInCurrentBatch = false;
             for (int i = 0; i < session.currentBatch.size(); i++) {
                 TranslationModConfig config = session.currentBatch.get(i);
                 Component line = event.line(i);
                 String signContent = line == null ? "" : PLAIN_TEXT_SERIALIZER.serialize(line);
                 if (!signContent.contains(LINE_PREFIX + config.key)) {
                     handleModDetection(player, session, config, signContent);
+                    detectedInCurrentBatch = true;
                 }
+            }
+
+            if (detectedInCurrentBatch) {
+                session.finished = true;
+                completeSession(uuid, player);
+                return;
             }
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> openNextBatch(player, session), 5L);
@@ -177,8 +185,10 @@ public class TranslationDetectionManager implements Listener {
         notifyStaff("玩家 " + player.getName() + " 正在使用 " + config.name);
 
         if (config.action == null) {
-            session.sharedDetectedModNames.add(config.name);
-            session.sharedDetectedValues.add(detectedValue);
+            if (!session.sharedDetectedModNames.contains(config.name)) {
+                session.sharedDetectedModNames.add(config.name);
+                session.sharedDetectedValues.add(detectedValue);
+            }
             return;
         }
 

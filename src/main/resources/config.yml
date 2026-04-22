@@ -21,7 +21,7 @@ channel-detect:
   #    server: "Limbo"
   #    message: "§c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mod_name%\n§c请移除这些模组后重新加入"
   mods:
-    MaliLib:
+    MaLiLib:
       # 检测到的频道前缀满足以下任一项时判定命中
       # 可选：单独 action，存在时覆盖上面的全局 action
       matches:
