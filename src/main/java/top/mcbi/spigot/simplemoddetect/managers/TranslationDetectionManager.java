@@ -37,6 +37,8 @@ public class TranslationDetectionManager implements Listener {
         private final Location signLocation;
         private final BlockData originalBlockData;
         private final List<TranslationModConfig> pendingMods;
+        private final List<String> sharedDetectedModNames = new ArrayList<>();
+        private final List<String> sharedDetectedValues = new ArrayList<>();
         private List<TranslationModConfig> currentBatch = List.of();
         private boolean finished;
 
@@ -95,7 +97,7 @@ public class TranslationDetectionManager implements Listener {
 
     private void openNextBatch(Player player, TranslationCheckSession session) {
         if (!player.isOnline() || session.finished || !session.hasPendingMods()) {
-            finishSession(player.getUniqueId(), player);
+            completeSession(player.getUniqueId(), player);
             return;
         }
 
@@ -128,14 +130,14 @@ public class TranslationDetectionManager implements Listener {
                     }, 5L);
                 } catch (Exception e) {
                     plugin.getLogger().log(Level.SEVERE, "Failed to use adventure API for sign", e);
-                    finishSession(uuid, player);
+                    cleanupSession(uuid, player);
                 }
             } else {
-                finishSession(uuid, player);
+                cleanupSession(uuid, player);
             }
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to open sign editor: " + e.getMessage(), e);
-            finishSession(player.getUniqueId(), player);
+            cleanupSession(player.getUniqueId(), player);
         }
     }
 
@@ -154,39 +156,37 @@ public class TranslationDetectionManager implements Listener {
         });
 
         try {
-            boolean detected = false;
             for (int i = 0; i < session.currentBatch.size(); i++) {
                 TranslationModConfig config = session.currentBatch.get(i);
                 Component line = event.line(i);
                 String signContent = line == null ? "" : PLAIN_TEXT_SERIALIZER.serialize(line);
                 if (!signContent.contains(LINE_PREFIX + config.key)) {
-                    handleModDetection(player, config, signContent);
-                    detected = true;
+                    handleModDetection(player, session, config, signContent);
                 }
-            }
-
-            if (detected) {
-                session.finished = true;
-                finishSession(uuid, player);
-                return;
             }
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> openNextBatch(player, session), 5L);
         } catch (Exception e) {
             plugin.getLogger().log(Level.WARNING, "Failed to parse sign content", e);
-            finishSession(uuid, player);
+            cleanupSession(uuid, player);
         }
     }
 
-    private void handleModDetection(Player player, TranslationModConfig config, String detectedValue) {
+    private void handleModDetection(Player player, TranslationCheckSession session, TranslationModConfig config, String detectedValue) {
         plugin.getLogger().info("玩家 " + player.getName() + " 被检测到使用 " + config.name);
         notifyStaff("玩家 " + player.getName() + " 正在使用 " + config.name);
+
+        if (config.action == null) {
+            session.sharedDetectedModNames.add(config.name);
+            session.sharedDetectedValues.add(detectedValue);
+            return;
+        }
 
         Map<String, String> placeholders = new HashMap<>();
         placeholders.put("%player%", player.getName());
         placeholders.put("%mod_name%", config.name);
         placeholders.put("%detected_value%", detectedValue);
-        plugin.getPunishmentExecutor().execute(player, plugin.getConfigManager().getTranslationAction(), placeholders);
+        plugin.getPunishmentExecutor().execute(player, config.action, placeholders);
     }
 
     private void notifyStaff(String message) {
@@ -203,10 +203,23 @@ public class TranslationDetectionManager implements Listener {
 
     public void removePlayer(UUID uuid) {
         Player player = Bukkit.getPlayer(uuid);
-        finishSession(uuid, player);
+        cleanupSession(uuid, player);
     }
 
-    private void finishSession(UUID uuid, Player player) {
+    private void completeSession(UUID uuid, Player player) {
+        TranslationCheckSession session = sessions.get(uuid);
+        if (session != null && !session.sharedDetectedModNames.isEmpty()) {
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("%player%", player == null ? "" : player.getName());
+            placeholders.put("%mod_name%", String.join(", ", session.sharedDetectedModNames));
+            placeholders.put("%detected_value%", String.join(" | ", session.sharedDetectedValues));
+            plugin.getPunishmentExecutor().execute(player, plugin.getConfigManager().getTranslationAction(), placeholders);
+        }
+
+        cleanupSession(uuid, player);
+    }
+
+    private void cleanupSession(UUID uuid, Player player) {
         TranslationCheckSession session = sessions.remove(uuid);
         if (session == null || player == null) {
             return;

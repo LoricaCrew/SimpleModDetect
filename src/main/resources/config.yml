@@ -15,14 +15,15 @@ channel-detect:
   action:
     type: COMMAND
     commands:
-      - "litebans:kick %player% §c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mod_name%\n§c请移除这些模组后重新加入"
+      - "litebans:kick %player% §c你使用的模组不被允许进入此服务器\n§c被检测到的模组:\n§e%mod_name%\n§c请移除这些模组后重新加入"
   #  action:
   #    type: SEND
   #    server: "Limbo"
   #    message: "§c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mod_name%\n§c请移除这些模组后重新加入"
   mods:
-    Servux:
+    MaliLib:
       # 检测到的频道前缀满足以下任一项时判定命中
+      # 可选：单独 action，存在时覆盖上面的全局 action
       matches:
         - "servux"
     JourneyMap:
@@ -48,7 +49,7 @@ translation-detect:
   action:
     type: COMMAND
     commands:
-      - "litebans:kick %player% §c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mod_name%\n§c请移除这些模组后重新加入"
+      - "litebans:kick %player% §c你使用的模组不被允许进入此服务器\n§c被检测到的模组:\n§e%mod_name%\n§c请移除这些模组后重新加入"
 #  action:
 #    type: SEND
 #    server: "Limbo"
@@ -56,6 +57,11 @@ translation-detect:
   mods:
     MeteorClient:
       key: "key.meteor-client.open-gui"
+      # 可选：单独 action，存在时覆盖上面的全局 action
+      action:
+        type: COMMAND
+        commands:
+          - "litebans:ban %player% §cAntiCheat§f > §cUnfair Advantage §7[BAw9LAY7Kl0AUVxF m=false S=Limbo]"
     Tweakeroo:
       key: "tweakeroo.config.tab.tweaks"
     TweakerMore:
@@ -92,6 +98,10 @@ translation-detect:
       key: "modmenu.nameTranslation.jade"
     InvMove:
       key: "config.invmove.title"
+      # action:
+      #   type: SEND
+      #   server: "Limbo"
+      #   message: "§c检测到 %mod_name%，你已被传送至审核服。"
 #    XaerosMinimap:
 #      key: "gui.xaero_delete"
 #    XaerosWorldmap:

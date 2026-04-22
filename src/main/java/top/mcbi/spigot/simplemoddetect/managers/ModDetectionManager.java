@@ -52,12 +52,23 @@ public class ModDetectionManager {
             return;
         }
 
+        List<String> sharedModNames = new ArrayList<>();
+        List<String> sharedDetectedMods = new ArrayList<>();
         for (ChannelModConfig config : matchedConfigs) {
             String detectedMod = modChecker.findMatchedModId(config, channels);
             plugin.getLogger().warning("玩家 " + player.getName() + " 被检测到频道 " + config.name + "，实际标识: " + detectedMod);
             notifyStaff("玩家 " + player.getName() + " 被检测到使用 " + config.name + " (" + detectedMod + ")");
-            executePunishment(player, config, detectedMod);
+
+            if (config.action != null) {
+                executePunishment(player, config.action, player.getName(), config.name, detectedMod);
+                continue;
+            }
+
+            sharedModNames.add(config.name);
+            sharedDetectedMods.add(detectedMod);
         }
+
+        executeSharedPunishment(player, sharedModNames, sharedDetectedMods);
     }
 
     public void handleDetectedMods(Player player, List<String> mods) {
@@ -74,20 +85,45 @@ public class ModDetectionManager {
             return;
         }
 
+        List<String> sharedModNames = new ArrayList<>();
+        List<String> sharedDetectedMods = new ArrayList<>();
         for (ChannelModConfig config : matchedConfigs) {
             String detectedMod = modChecker.findMatchedModId(config, mods);
             plugin.getLogger().warning("玩家 " + player.getName() + " 被检测到使用频道模组 " + config.name + "，实际标识: " + detectedMod);
             notifyStaff("玩家 " + player.getName() + " 被检测到使用 " + config.name + " (" + detectedMod + ")");
-            executePunishment(player, config, detectedMod);
+
+            if (config.action != null) {
+                executePunishment(player, config.action, player.getName(), config.name, detectedMod);
+                continue;
+            }
+
+            sharedModNames.add(config.name);
+            sharedDetectedMods.add(detectedMod);
         }
+
+        executeSharedPunishment(player, sharedModNames, sharedDetectedMods);
     }
 
-    public void executePunishment(Player player, ChannelModConfig config, String detectedMod) {
+    private void executeSharedPunishment(Player player, List<String> modNames, List<String> detectedMods) {
+        if (modNames.isEmpty()) {
+            return;
+        }
+
+        executePunishment(
+            player,
+            plugin.getConfigManager().getChannelAction(),
+            player.getName(),
+            String.join(", ", modNames),
+            String.join(", ", detectedMods)
+        );
+    }
+
+    private void executePunishment(Player player, ConfigManager.PunishmentAction action, String playerName, String modName, String detectedMod) {
         Map<String, String> placeholders = new HashMap<>();
-        placeholders.put("%player%", player.getName());
-        placeholders.put("%mod_name%", config.name);
+        placeholders.put("%player%", playerName);
+        placeholders.put("%mod_name%", modName);
         placeholders.put("%detected_mod%", detectedMod);
-        plugin.getPunishmentExecutor().execute(player, plugin.getConfigManager().getChannelAction(), placeholders);
+        plugin.getPunishmentExecutor().execute(player, action, placeholders);
     }
 
     public void notifyStaff(String message) {

@@ -69,20 +69,24 @@ public class ConfigManager {
     public static class ChannelModConfig {
         public final String name;
         public final List<String> matches;
+        public final PunishmentAction action;
 
-        public ChannelModConfig(String name, List<String> matches) {
+        public ChannelModConfig(String name, List<String> matches, PunishmentAction action) {
             this.name = name;
             this.matches = matches;
+            this.action = action;
         }
     }
 
     public static class TranslationModConfig {
         public final String name;
         public final String key;
+        public final PunishmentAction action;
 
-        public TranslationModConfig(String name, String key) {
+        public TranslationModConfig(String name, String key, PunishmentAction action) {
             this.name = name;
             this.key = key;
+            this.action = action;
         }
     }
 
@@ -117,7 +121,7 @@ public class ConfigManager {
         channelDetectEnabled = config.getBoolean("channel-detect.enabled", true);
         channelNotifyStaff = config.getBoolean("channel-detect.notify-staff", true);
         channelNotificationPermission = config.getString("channel-detect.notification-permission", "simplemoddetect.notify");
-        channelAction = parsePunishmentAction(config.getConfigurationSection("channel-detect"), "频道检测");
+        channelAction = parsePunishmentAction(config.getConfigurationSection("channel-detect"), "频道检测", true);
 
         channelMods.clear();
         ConfigurationSection modsSection = config.getConfigurationSection("channel-detect.mods");
@@ -148,7 +152,12 @@ public class ConfigManager {
                     continue;
                 }
 
-                channelMods.add(new ChannelModConfig(modName, matches));
+                PunishmentAction modAction = parsePunishmentAction(modSection, "频道检测模组 " + modName, false);
+                if (modAction == null && channelAction == null) {
+                    plugin.getLogger().warning("频道检测模组缺失可用 action: " + modName);
+                }
+
+                channelMods.add(new ChannelModConfig(modName, matches, modAction));
             }
         }
 
@@ -159,7 +168,7 @@ public class ConfigManager {
         translationEnabled = config.getBoolean("translation-detect.enabled", true);
         notifyStaff = config.getBoolean("translation-detect.notify-staff", true);
         notificationPermission = config.getString("translation-detect.notification-permission", "simplemoddetect.notify");
-        translationAction = parsePunishmentAction(config.getConfigurationSection("translation-detect"), "翻译检测");
+        translationAction = parsePunishmentAction(config.getConfigurationSection("translation-detect"), "翻译检测", true);
 
         translationMods.clear();
         ConfigurationSection modsSection = config.getConfigurationSection("translation-detect.mods");
@@ -179,7 +188,12 @@ public class ConfigManager {
                 continue;
             }
 
-            translationMods.add(new TranslationModConfig(modName, key));
+            PunishmentAction modAction = parsePunishmentAction(modSection, "翻译检测模组 " + modName, false);
+            if (modAction == null && translationAction == null) {
+                plugin.getLogger().warning("翻译检测模组缺失可用 action: " + modName);
+            }
+
+            translationMods.add(new TranslationModConfig(modName, key, modAction));
         }
 
         plugin.getLogger().info("已加载 " + translationMods.size() + " 个翻译检测模组配置");
@@ -199,9 +213,11 @@ public class ConfigManager {
         saveConfig();
     }
 
-    private PunishmentAction parsePunishmentAction(ConfigurationSection detectSection, String detectType) {
+    private PunishmentAction parsePunishmentAction(ConfigurationSection detectSection, String detectType, boolean required) {
         if (detectSection == null) {
-            plugin.getLogger().warning(detectType + "配置缺失配置节点");
+            if (required) {
+                plugin.getLogger().warning(detectType + "配置缺失配置节点");
+            }
             return null;
         }
 
@@ -212,7 +228,9 @@ public class ConfigManager {
                 return new PunishmentAction(PunishmentType.COMMAND, legacyCommands, null, null);
             }
 
-            plugin.getLogger().warning(detectType + "配置缺失 action");
+            if (required) {
+                plugin.getLogger().warning(detectType + "配置缺失 action");
+            }
             return null;
         }
 
