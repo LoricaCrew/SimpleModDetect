@@ -6,6 +6,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.ChannelPromise;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
+import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket;
 import org.bukkit.entity.Player;
 import top.mcbi.spigot.simplemoddetect.SimpleModDetect;
 import top.mcbi.spigot.simplemoddetect.nms.NMSVersionAdapter;
@@ -38,6 +39,12 @@ public class ChannelInjector {
                     @Override
                     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
                         try {
+                            if (msg instanceof ServerboundSignUpdatePacket signUpdatePacket) {
+                                if (packetHandler.handleSignUpdate(player, signUpdatePacket)) {
+                                    return;
+                                }
+                            }
+
                             if (versionAdapter.isCustomPayloadPacket(msg)) {
                                 if (msg instanceof ServerboundCustomPayloadPacket packet) {
                                     packetHandler.handleCustomPayload(player, packet);

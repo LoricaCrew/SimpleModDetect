@@ -6,6 +6,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.protocol.common.custom.DiscardedPayload;
 import net.minecraft.network.FriendlyByteBuf;
 import org.bukkit.entity.Player;
+import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket;
 import top.mcbi.spigot.simplemoddetect.nms.NMSVersionAdapter;
 import top.mcbi.spigot.simplemoddetect.nms.VersionAdapterManager;
 import top.mcbi.spigot.simplemoddetect.utils.ModChecker;
@@ -59,6 +60,15 @@ public class PacketHandler {
 
         } catch (Exception e) {
             plugin.getLogger().log(Level.WARNING, "处理自定义载荷包时出错", e);
+        }
+    }
+
+    public boolean handleSignUpdate(Player player, ServerboundSignUpdatePacket packet) {
+        try {
+            return plugin.getTranslationDetectionManager().handleSignUpdatePacket(player, packet);
+        } catch (Exception exception) {
+            plugin.getLogger().log(Level.WARNING, "处理木牌更新包时出错", exception);
+            return false;
         }
     }
 
