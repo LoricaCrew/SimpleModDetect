@@ -125,6 +125,26 @@ translation-detect:
       key: "key.category.cheatutils.common"
     Neat:
       key: "neat.keybind.toggle"
+    NoChatReport:
+      key: "key.nochatreports.cmd"
+    BridgingMod:
+      key: "config.bridgingmod.title"
+    ShoulderSurfing:
+      key: "shouldersurfing.configuration.camera"
+    FreeLook:
+      key: "freelook.key.menu"
+    StepUp:
+      key: "key.stepup.toggle"
+    InventoryEssentials:
+      key: "key.inventoryessentials.bulk_drop"
+    AutoTools:
+      key: "key.autotools.category"
+    AutoSwitch:
+      key: "key.autoswitch.toggle"
+    ChestESP:
+      key: "key.category.chestesp.chestesp"
+    Crawl:
+      key: "key.crawl"
 #    XaerosMinimap:
 #      key: "gui.xaero_delete"
 #    XaerosWorldmap:
@@ -149,3 +169,5 @@ translation-detect:
 #      key: "key.category.custom_crosshair_mod.key_bindings"
 #    GammaUtils:
 #      key: "key.category.gammautils.gamma"
+#    InventoryHUD:
+#      key: "key.inventoryhud.category"
