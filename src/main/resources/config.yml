@@ -10,10 +10,10 @@ channel-detect:
   enabled: true
   notify-staff: true
   notification-permission: "simplemoddetect.notify"
-  # 统一惩罚行为，可选 COMMAND 或 SEND
-  # 可用变量: %player% %mod_name% %detected_mod%
   action:
+    # 统一惩罚行为，可选 COMMAND 或 SEND
     type: COMMAND
+    # 可用变量: %player% %mod_name% %detected_mod%
     commands:
       - "litebans:kick %player% §c你使用的模组不被允许进入此服务器\n§c被检测到的模组:\n§e%mod_name%\n§c请移除这些模组后重新加入"
   #  action:
@@ -32,6 +32,9 @@ channel-detect:
     Baritone:
       matches:
         - "baritone"
+    AutoTotem:
+      matches:
+        - "autototem"
 #    MarlowCrystalOptimizer:
 #      matches:
 #        - "minecraft:mco"
@@ -44,20 +47,36 @@ translation-detect:
   enabled: true
   notify-staff: true
   notification-permission: "simplemoddetect.notify"
-  # 统一惩罚行为，可选 COMMAND 或 SEND
-  # 可用变量: %player% %mod_name% %detected_value%
+  batch:
+    # 每行合并多少个翻译键进行检测
+    # 实际每次木牌最多会检测 4 行，因此单次总量约为 4 * 此值
+    # 值过大可能接近客户端木牌单行长度限制，插件会按估算长度自动提前换行
+    mods-per-line: 1
+  timing:
+    # 玩家加入后等待多久再开始木牌检测
+    initial-check-delay-ticks: 5
+    # 发送木牌内容后，延迟多久再打开木牌编辑界面
+    open-sign-delay-ticks: 1
+    # 一批木牌回包处理完成后，等待多久再发送下一批
+    next-batch-delay-ticks: 1
   action:
+    # 统一惩罚行为，可选 COMMAND 或 SEND
     type: COMMAND
+    # 可用变量: %player% %mod_name% %detected_value%
     commands:
       - "litebans:kick %player% §c你使用的模组不被允许进入此服务器\n§c被检测到的模组:\n§e%mod_name%\n§c请移除这些模组后重新加入"
-#  action:
-#    type: SEND
-#    server: "Limbo"
-#    message: "§c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mod_name%\n§c请移除这些模组后重新加入"
+  # action:
+  #   type: SEND
+  #   server: "Limbo"
+  #   message: "§c你使用的模组不被允许进入此服务器\n§c被检测到的模组: §e%mod_name%\n§c请移除这些模组后重新加入"
   mods:
     MeteorClient:
       key: "key.meteor-client.open-gui"
       # 可选：单独 action，存在时覆盖上面的全局 action
+      # action:
+      #   type: SEND
+      #   server: "Limbo"
+      #   message: "§c检测到 %mod_name%，你已被传送至审核服。"
       action:
         type: COMMAND
         commands:
@@ -98,10 +117,14 @@ translation-detect:
       key: "modmenu.nameTranslation.jade"
     InvMove:
       key: "config.invmove.title"
-      # action:
-      #   type: SEND
-      #   server: "Limbo"
-      #   message: "§c检测到 %mod_name%，你已被传送至审核服。"
+    AutoClicker:
+      key: "key.category.autoclicker.keybinding-title"
+    XrayMod:
+      key: "xray.mod_name"
+    CheatUtils:
+      key: "key.category.cheatutils.common"
+    Neat:
+      key: "neat.keybind.toggle"
 #    XaerosMinimap:
 #      key: "gui.xaero_delete"
 #    XaerosWorldmap:

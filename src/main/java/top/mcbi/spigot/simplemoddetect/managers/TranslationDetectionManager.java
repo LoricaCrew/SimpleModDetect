@@ -24,10 +24,8 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 public class TranslationDetectionManager {
-    private static final int BATCH_SIZE = 4;
-    private static final long INITIAL_CHECK_DELAY_TICKS = 5L;
-    private static final long OPEN_SIGN_DELAY_TICKS = 1L;
-    private static final long NEXT_BATCH_DELAY_TICKS = 1L;
+    private static final int SIGN_LINE_COUNT = 4;
+    private static final int MAX_ESTIMATED_LINE_LENGTH = 320;
 
     private final SimpleModDetect plugin;
     private final Map<UUID, TranslationCheckSession> sessions = new HashMap<>();
@@ -39,7 +37,7 @@ public class TranslationDetectionManager {
         private final List<String> sharedDetectedModNames = new ArrayList<>();
         private final List<String> sharedDetectedValues = new ArrayList<>();
         private final String markerToken;
-        private List<TranslationModConfig> currentBatch = List.of();
+        private List<List<TranslationModConfig>> currentLineGroups = List.of();
         private int currentBatchId;
         private boolean finished;
 
@@ -53,20 +51,6 @@ public class TranslationDetectionManager {
         private boolean hasPendingMods() {
             return !pendingMods.isEmpty();
         }
-
-        private List<TranslationModConfig> nextBatch() {
-            if (pendingMods.isEmpty()) {
-                currentBatch = List.of();
-                return currentBatch;
-            }
-
-            int size = Math.min(BATCH_SIZE, pendingMods.size());
-            List<TranslationModConfig> batch = new ArrayList<>(pendingMods.subList(0, size));
-            pendingMods.subList(0, size).clear();
-            currentBatchId++;
-            currentBatch = batch;
-            return batch;
-        }
     }
 
     public TranslationDetectionManager(SimpleModDetect plugin) {
@@ -79,7 +63,7 @@ public class TranslationDetectionManager {
             return;
         }
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> startCheck(player), INITIAL_CHECK_DELAY_TICKS);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> startCheck(player), config.getTranslationInitialCheckDelayTicks());
     }
 
     private void startCheck(Player player) {
@@ -114,17 +98,16 @@ public class TranslationDetectionManager {
             block.setType(Material.OAK_SIGN, false);
             if (block.getState() instanceof Sign sign) {
                 try {
-                    List<TranslationModConfig> currentBatch = session.nextBatch();
-                    if (currentBatch.isEmpty()) {
+                    List<List<TranslationModConfig>> currentLineGroups = prepareNextBatch(session);
+                    if (currentLineGroups.isEmpty()) {
                         completeSession(uuid, player);
                         return;
                     }
 
                     SignSide backSide = sign.getSide(Side.BACK);
-                    for (int i = 0; i < BATCH_SIZE; i++) {
-                        if (i < currentBatch.size()) {
-                            TranslationModConfig config = currentBatch.get(i);
-                            backSide.line(i, Component.text(getLinePrefix(session, i)).append(Component.translatable(config.key)));
+                    for (int i = 0; i < SIGN_LINE_COUNT; i++) {
+                        if (i < currentLineGroups.size()) {
+                            backSide.line(i, buildLineContent(session, i, currentLineGroups.get(i)));
                         } else {
                             backSide.line(i, Component.empty());
                         }
@@ -138,7 +121,7 @@ public class TranslationDetectionManager {
                             player.openSign(sign, Side.BACK);
                             player.closeInventory();
                         }
-                    }, OPEN_SIGN_DELAY_TICKS);
+                    }, plugin.getConfigManager().getTranslationOpenSignDelayTicks());
                 } catch (Exception e) {
                     plugin.getLogger().log(Level.SEVERE, "Failed to use adventure API for sign", e);
                     cleanupSession(uuid, player);
@@ -154,7 +137,7 @@ public class TranslationDetectionManager {
 
     public boolean handleSignUpdatePacket(Player player, ServerboundSignUpdatePacket packet) {
         TranslationCheckSession session = sessions.get(player.getUniqueId());
-        if (session == null || session.currentBatch.isEmpty()) {
+        if (session == null || session.currentLineGroups.isEmpty()) {
             return false;
         }
 
@@ -175,23 +158,24 @@ public class TranslationDetectionManager {
 
         try {
             String[] lines = packet.getLines();
-            for (int i = 0; i < session.currentBatch.size(); i++) {
-                TranslationModConfig config = session.currentBatch.get(i);
-                String line = lines.length > i ? lines[i] : "";
-                String linePrefix = getLinePrefix(session, i);
+            for (int lineIndex = 0; lineIndex < session.currentLineGroups.size(); lineIndex++) {
+                List<TranslationModConfig> lineGroup = session.currentLineGroups.get(lineIndex);
+                String line = lines.length > lineIndex ? lines[lineIndex] : "";
+                String linePrefix = getLinePrefix(session, lineIndex);
                 if (!line.startsWith(linePrefix)) {
                     plugin.getLogger().warning("玩家 " + player.getName() + " 的翻译键检测返回了无效内容，已终止本次检测: " + line);
                     cleanupSession(player.getUniqueId(), player);
                     return true;
                 }
 
-                String translatedValue = line.substring(linePrefix.length());
-                if (!translatedValue.equals(config.key)) {
-                    handleModDetection(player, session, config, translatedValue);
+                String lineContent = line.substring(linePrefix.length());
+                if (!handleLineResponse(player, session, lineGroup, lineIndex, lineContent)) {
+                    cleanupSession(player.getUniqueId(), player);
+                    return true;
                 }
             }
 
-            Bukkit.getScheduler().runTaskLater(plugin, () -> openNextBatch(player, session), NEXT_BATCH_DELAY_TICKS);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> openNextBatch(player, session), plugin.getConfigManager().getTranslationNextBatchDelayTicks());
         } catch (Exception exception) {
             plugin.getLogger().log(Level.WARNING, "Failed to handle sign update packet", exception);
             cleanupSession(player.getUniqueId(), player);
@@ -236,8 +220,101 @@ public class TranslationDetectionManager {
         cleanupSession(uuid, player);
     }
 
+    private List<List<TranslationModConfig>> prepareNextBatch(TranslationCheckSession session) {
+        if (session.pendingMods.isEmpty()) {
+            session.currentLineGroups = List.of();
+            return session.currentLineGroups;
+        }
+
+        int modsPerLine = plugin.getConfigManager().getTranslationModsPerLine();
+        session.currentBatchId++;
+
+        List<List<TranslationModConfig>> lineGroups = new ArrayList<>();
+        for (int lineIndex = 0; lineIndex < SIGN_LINE_COUNT && !session.pendingMods.isEmpty(); lineIndex++) {
+            List<TranslationModConfig> lineGroup = new ArrayList<>();
+            while (lineGroup.size() < modsPerLine && !session.pendingMods.isEmpty()) {
+                TranslationModConfig nextMod = session.pendingMods.getFirst();
+                int estimatedLength = estimateLineLength(session, lineIndex, lineGroup, nextMod);
+                if (!lineGroup.isEmpty() && estimatedLength > MAX_ESTIMATED_LINE_LENGTH) {
+                    break;
+                }
+
+                lineGroup.add(session.pendingMods.removeFirst());
+                if (estimatedLength > MAX_ESTIMATED_LINE_LENGTH) {
+                    break;
+                }
+            }
+
+            if (!lineGroup.isEmpty()) {
+                lineGroups.add(lineGroup);
+            }
+        }
+
+        session.currentLineGroups = lineGroups;
+        return lineGroups;
+    }
+
+    private Component buildLineContent(TranslationCheckSession session, int lineIndex, List<TranslationModConfig> lineGroup) {
+        Component content = Component.text(getLinePrefix(session, lineIndex));
+        for (int segmentIndex = 0; segmentIndex < lineGroup.size(); segmentIndex++) {
+            TranslationModConfig config = lineGroup.get(segmentIndex);
+            content = content
+                .append(Component.text(getSegmentPrefix(session, lineIndex, segmentIndex)))
+                .append(Component.translatable(config.key));
+        }
+        return content;
+    }
+
+    private int estimateLineLength(TranslationCheckSession session, int lineIndex, List<TranslationModConfig> lineGroup, TranslationModConfig nextMod) {
+        int length = getLinePrefix(session, lineIndex).length();
+        for (int segmentIndex = 0; segmentIndex < lineGroup.size(); segmentIndex++) {
+            TranslationModConfig config = lineGroup.get(segmentIndex);
+            length += getSegmentPrefix(session, lineIndex, segmentIndex).length() + config.key.length();
+        }
+
+        length += getSegmentPrefix(session, lineIndex, lineGroup.size()).length() + nextMod.key.length();
+        return length;
+    }
+
+    private boolean handleLineResponse(Player player, TranslationCheckSession session, List<TranslationModConfig> lineGroup, int lineIndex, String lineContent) {
+        int cursor = 0;
+        for (int segmentIndex = 0; segmentIndex < lineGroup.size(); segmentIndex++) {
+            TranslationModConfig config = lineGroup.get(segmentIndex);
+            String segmentPrefix = getSegmentPrefix(session, lineIndex, segmentIndex);
+            if (!lineContent.startsWith(segmentPrefix, cursor)) {
+                plugin.getLogger().warning("玩家 " + player.getName() + " 的翻译键检测返回了无效段内容，已终止本次检测: " + lineContent);
+                return false;
+            }
+
+            int valueStart = cursor + segmentPrefix.length();
+            int valueEnd;
+            if (segmentIndex + 1 < lineGroup.size()) {
+                String nextSegmentPrefix = getSegmentPrefix(session, lineIndex, segmentIndex + 1);
+                valueEnd = lineContent.indexOf(nextSegmentPrefix, valueStart);
+                if (valueEnd < 0) {
+                    plugin.getLogger().warning("玩家 " + player.getName() + " 的翻译键检测无法解析下一段内容，已终止本次检测: " + lineContent);
+                    return false;
+                }
+            } else {
+                valueEnd = lineContent.length();
+            }
+
+            String translatedValue = lineContent.substring(valueStart, valueEnd);
+            if (!translatedValue.equals(config.key)) {
+                handleModDetection(player, session, config, translatedValue);
+            }
+            cursor = valueEnd;
+        }
+
+        return cursor == lineContent.length();
+    }
+
     private String getLinePrefix(TranslationCheckSession session, int lineIndex) {
         return "⟦⌁" + session.markerToken + "⌁" + session.currentBatchId + ":" + lineIndex + "⟧ ";
+    }
+
+    private String getSegmentPrefix(TranslationCheckSession session, int lineIndex, int segmentIndex) {
+        return "⟬" + session.markerToken + ":" + session.currentBatchId + ":" + lineIndex + ":" + segmentIndex + "⟭";
     }
 
     private static String generateMarkerToken() {
