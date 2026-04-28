@@ -145,6 +145,8 @@ translation-detect:
       key: "key.category.chestesp.chestesp"
     Crawl:
       key: "key.crawl"
+    ElytraPitch:
+      key: "text.autoconfig.elytrapitch.title"
 #    XaerosMinimap:
 #      key: "gui.xaero_delete"
 #    XaerosWorldmap:
@@ -153,8 +155,6 @@ translation-detect:
 #      key: "base.viafabricplus.on"
 #    Carpet:
 #      key: "carpet.rule.carpets.name"
-#    ElytraPitch:
-#      key: "text.autoconfig.elytrapitch.title"
 #    ClientTime:
 #      key: "category.clienttime"
 #    CnTierTagger:
