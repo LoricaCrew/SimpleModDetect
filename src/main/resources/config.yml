@@ -80,7 +80,7 @@ translation-detect:
       action:
         type: COMMAND
         commands:
-          - "litebans:ban %player% §cAntiCheat§f > §cUnfair Advantage §7[BAw9LAY7Kl0AUVxF m=false S=Limbo]"
+          - "litebans:ban %player% §cAntiCheat§f > §cUnfair Advantage §7[BAw9LAY7IVAR m=false S=Limbo]"
     Tweakeroo:
       key: "tweakeroo.config.tab.tweaks"
     TweakerMore:
@@ -147,6 +147,10 @@ translation-detect:
       key: "key.crawl"
     ElytraPitch:
       key: "text.autoconfig.elytrapitch.title"
+    DoABarrelRoll:
+      key: "config.do_a_barrel_roll.title"
+    XPlusAutoFish:
+      key: "key.autofish.open_gui"
 #    XaerosMinimap:
 #      key: "gui.xaero_delete"
 #    XaerosWorldmap:
