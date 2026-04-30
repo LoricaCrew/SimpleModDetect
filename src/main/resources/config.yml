@@ -51,10 +51,10 @@ translation-detect:
     # 每行合并多少个翻译键进行检测
     # 实际每次木牌最多会检测 4 行，因此单次总量约为 4 * 此值
     # 值过大可能接近客户端木牌单行长度限制，插件会按估算长度自动提前换行
-    mods-per-line: 1
+    mods-per-line: 3
   timing:
     # 玩家加入后等待多久再开始木牌检测
-    initial-check-delay-ticks: 5
+    initial-check-delay-ticks: 10
     # 发送木牌内容后，延迟多久再打开木牌编辑界面
     open-sign-delay-ticks: 1
     # 一批木牌回包处理完成后，等待多久再发送下一批
@@ -101,6 +101,8 @@ translation-detect:
       key: "cracker.enabled"
     NameTagTweaks:
       key: "nametagtweaks.key.open_settings"
+    NameTagtweaks:
+      key: "nametag-tweaks.nametag-tweaks"
     HealthIndicators:
       key: "key.categories.healthindicators"
     BetterNameVisibility:

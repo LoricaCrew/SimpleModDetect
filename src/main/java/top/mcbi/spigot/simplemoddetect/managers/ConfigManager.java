@@ -176,7 +176,7 @@ public class ConfigManager {
         translationEnabled = config.getBoolean("translation-detect.enabled", true);
         notifyStaff = config.getBoolean("translation-detect.notify-staff", true);
         notificationPermission = config.getString("translation-detect.notification-permission", "simplemoddetect.notify");
-        translationInitialCheckDelayTicks = Math.max(0L, config.getLong("translation-detect.timing.initial-check-delay-ticks", 5L));
+        translationInitialCheckDelayTicks = Math.max(0L, config.getLong("translation-detect.timing.initial-check-delay-ticks", 10L));
         translationOpenSignDelayTicks = Math.max(0L, config.getLong("translation-detect.timing.open-sign-delay-ticks", 1L));
         translationNextBatchDelayTicks = Math.max(0L, config.getLong("translation-detect.timing.next-batch-delay-ticks", 1L));
         translationModsPerLine = Math.max(1, config.getInt("translation-detect.batch.mods-per-line", 1));
