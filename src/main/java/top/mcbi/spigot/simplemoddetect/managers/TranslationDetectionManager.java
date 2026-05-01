@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.UUID;
 import java.util.logging.Level;
@@ -31,8 +32,8 @@ public class TranslationDetectionManager {
     private static final int MAX_INVALID_RESPONSE_RETRIES = 3;
 
     private final SimpleModDetect plugin;
-    private final Map<UUID, TranslationCheckSession> sessions = new HashMap<>();
-    private final Set<UUID> lockedPlayers = new HashSet<>();
+    private final Map<UUID, TranslationCheckSession> sessions = new ConcurrentHashMap<>();
+    private final Set<UUID> lockedPlayers = ConcurrentHashMap.newKeySet();
 
     private record ParsedPacketLine(int batchId, int lineIndex, String content) {
     }
@@ -73,15 +74,15 @@ public class TranslationDetectionManager {
             return;
         }
 
-        lockedPlayers.add(player.getUniqueId());
         Bukkit.getScheduler().runTaskLater(plugin, () -> startCheck(player), config.getTranslationInitialCheckDelayTicks());
     }
 
     private void startCheck(Player player) {
         if (!player.isOnline()) {
-            lockedPlayers.remove(player.getUniqueId());
             return;
         }
+
+        lockedPlayers.add(player.getUniqueId());
 
         Block block = player.getLocation().clone().add(0.0, -5.0, 0.0).getBlock();
         TranslationCheckSession previousSession = sessions.remove(player.getUniqueId());
@@ -99,8 +100,14 @@ public class TranslationDetectionManager {
     }
 
     private void openNextBatch(Player player, TranslationCheckSession session) {
-        if (!player.isOnline() || session.finished || !session.hasPendingMods()) {
-            completeSession(player.getUniqueId(), player);
+        synchronized (session) {
+            if (sessions.get(player.getUniqueId()) != session) {
+                return;
+            }
+        }
+
+        if (!player.isOnline()) {
+            cleanupSession(player.getUniqueId(), player);
             return;
         }
 
@@ -110,10 +117,18 @@ public class TranslationDetectionManager {
             block.setType(Material.OAK_SIGN, false);
             if (block.getState() instanceof Sign sign) {
                 try {
-                    List<List<TranslationModConfig>> currentLineGroups = prepareNextBatch(session);
-                    if (currentLineGroups.isEmpty()) {
-                        completeSession(uuid, player);
-                        return;
+                    List<List<TranslationModConfig>> currentLineGroups;
+                    synchronized (session) {
+                        if (session.finished || !session.hasPendingMods()) {
+                            completeSession(uuid, player);
+                            return;
+                        }
+
+                        currentLineGroups = prepareNextBatch(session);
+                        if (currentLineGroups.isEmpty()) {
+                            completeSession(uuid, player);
+                            return;
+                        }
                     }
 
                     SignSide backSide = sign.getSide(Side.BACK);
@@ -169,83 +184,90 @@ public class TranslationDetectionManager {
         boolean hasSessionMarker = false;
         boolean hasMalformedSessionLine = false;
         boolean hasStaleBatchLine = false;
-
-        for (String line : lines) {
-            if (line == null || line.isBlank()) {
-                continue;
-            }
-
-            ParsedPacketLine parsedPacketLine = parsePacketLine(session, line);
-            if (parsedPacketLine != null) {
-                hasSessionMarker = true;
-                if (!session.currentLineGroups.isEmpty() && parsedPacketLine.batchId() == session.currentBatchId) {
-                    currentBatchLineContents.putIfAbsent(parsedPacketLine.lineIndex(), parsedPacketLine.content());
-                } else {
-                    hasStaleBatchLine = true;
-                }
-                continue;
-            }
-
-            if (line.contains(session.markerToken)) {
-                hasSessionMarker = true;
-                hasMalformedSessionLine = true;
-            }
-        }
-
-        if (session.currentLineGroups.isEmpty()) {
-            return hasSessionMarker;
-        }
-
-        if (currentBatchLineContents.isEmpty()) {
-            if (hasStaleBatchLine && !hasMalformedSessionLine) {
-                if (plugin.getConfigManager().isDebugMode()) {
-                    plugin.getLogger().info("玩家 " + player.getName() + " 的木牌检测收到旧批次回包，已忽略");
-                }
-                return true;
-            }
-
-            retryOrAbortCurrentBatch(
-                player.getUniqueId(),
-                player,
-                session,
-                new ArrayList<>(session.currentLineGroups),
-                "玩家 " + player.getName() + " 的翻译键检测返回了无效内容，已重试当前批次: " + firstNonEmptyLine(lines)
-            );
-            return true;
-        }
-
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            session.signLocation.getBlock().setBlockData(session.originalBlockData, false);
-        });
+        List<List<TranslationModConfig>> unresolvedLineGroups = new ArrayList<>();
 
         try {
-            List<List<TranslationModConfig>> unresolvedLineGroups = new ArrayList<>();
-            for (int lineIndex = 0; lineIndex < session.currentLineGroups.size(); lineIndex++) {
-                List<TranslationModConfig> lineGroup = session.currentLineGroups.get(lineIndex);
-                String lineContent = currentBatchLineContents.get(lineIndex);
-                if (lineContent == null) {
-                    unresolvedLineGroups.add(lineGroup);
-                    continue;
+            synchronized (session) {
+                if (sessions.get(player.getUniqueId()) != session) {
+                    return true;
                 }
 
-                if (!handleLineResponse(player, session, lineGroup, lineIndex, lineContent)) {
-                    unresolvedLineGroups.add(lineGroup);
+                for (String line : lines) {
+                    if (line == null || line.isBlank()) {
+                        continue;
+                    }
+
+                    ParsedPacketLine parsedPacketLine = parsePacketLine(session, line);
+                    if (parsedPacketLine != null) {
+                        hasSessionMarker = true;
+                        if (!session.currentLineGroups.isEmpty() && parsedPacketLine.batchId() == session.currentBatchId) {
+                            currentBatchLineContents.putIfAbsent(parsedPacketLine.lineIndex(), parsedPacketLine.content());
+                        } else {
+                            hasStaleBatchLine = true;
+                        }
+                        continue;
+                    }
+
+                    if (line.contains(session.markerToken)) {
+                        hasSessionMarker = true;
+                        hasMalformedSessionLine = true;
+                    }
                 }
+
+                if (session.currentLineGroups.isEmpty()) {
+                    return hasSessionMarker;
+                }
+
+                if (currentBatchLineContents.isEmpty()) {
+                    if (hasStaleBatchLine && !hasMalformedSessionLine) {
+                        if (plugin.getConfigManager().isDebugMode()) {
+                            plugin.getLogger().info("玩家 " + player.getName() + " 的木牌检测收到旧批次回包，已忽略");
+                        }
+                        return true;
+                    }
+
+                    retryOrAbortCurrentBatch(
+                        player.getUniqueId(),
+                        player,
+                        session,
+                        new ArrayList<>(session.currentLineGroups),
+                        "玩家 " + player.getName() + " 的翻译键检测返回了无效内容，已重试当前批次: " + firstNonEmptyLine(lines)
+                    );
+                    return true;
+                }
+
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    session.signLocation.getBlock().setBlockData(session.originalBlockData, false);
+                });
+
+                for (int lineIndex = 0; lineIndex < session.currentLineGroups.size(); lineIndex++) {
+                    List<TranslationModConfig> lineGroup = session.currentLineGroups.get(lineIndex);
+                    String lineContent = currentBatchLineContents.get(lineIndex);
+                    if (lineContent == null) {
+                        unresolvedLineGroups.add(lineGroup);
+                        continue;
+                    }
+
+                    if (!handleLineResponse(player, session, lineGroup, lineIndex, lineContent)) {
+                        unresolvedLineGroups.add(lineGroup);
+                    }
+                }
+
+                if (!unresolvedLineGroups.isEmpty()) {
+                    retryOrAbortCurrentBatch(
+                        player.getUniqueId(),
+                        player,
+                        session,
+                        unresolvedLineGroups,
+                        "玩家 " + player.getName() + " 的翻译键检测部分回包无效，已重试当前批次"
+                    );
+                    return true;
+                }
+
+                session.invalidResponseCount = 0;
+                markCurrentBatchHandled(session);
             }
 
-            if (!unresolvedLineGroups.isEmpty()) {
-                retryOrAbortCurrentBatch(
-                    player.getUniqueId(),
-                    player,
-                    session,
-                    unresolvedLineGroups,
-                    "玩家 " + player.getName() + " 的翻译键检测部分回包无效，已重试当前批次"
-                );
-                return true;
-            }
-
-            session.invalidResponseCount = 0;
-            markCurrentBatchHandled(session);
             Bukkit.getScheduler().runTaskLater(plugin, () -> openNextBatch(player, session), plugin.getConfigManager().getTranslationNextBatchDelayTicks());
         } catch (Exception exception) {
             plugin.getLogger().log(Level.WARNING, "Failed to handle sign update packet", exception);
@@ -338,13 +360,19 @@ public class TranslationDetectionManager {
             plugin.getLogger().warning(reason);
         }
 
-        requeueLineGroups(session, unresolvedLineGroups);
-        markCurrentBatchHandled(session);
-        session.invalidResponseCount++;
+        synchronized (session) {
+            if (sessions.get(uuid) != session) {
+                return;
+            }
 
-        if (session.invalidResponseCount >= MAX_INVALID_RESPONSE_RETRIES) {
-            abortDetection(uuid, player, "玩家 " + (player == null ? uuid : player.getName()) + " 的翻译键检测连续收到无效回包，已结束本次检测");
-            return;
+            requeueLineGroups(session, unresolvedLineGroups);
+            markCurrentBatchHandled(session);
+            session.invalidResponseCount++;
+
+            if (session.invalidResponseCount >= MAX_INVALID_RESPONSE_RETRIES) {
+                abortDetection(uuid, player, "玩家 " + (player == null ? uuid : player.getName()) + " 的翻译键检测连续收到无效回包，已结束本次检测");
+                return;
+            }
         }
 
         if (player != null && player.isOnline()) {
@@ -460,9 +488,17 @@ public class TranslationDetectionManager {
             plugin.getLogger().warning(reason);
         }
 
-        if (session != null && !session.detectedModNames.isEmpty()) {
-            completeSession(uuid, player);
-            return;
+        if (session != null) {
+            synchronized (session) {
+                if (sessions.get(uuid) != session) {
+                    return;
+                }
+
+                if (!session.detectedModNames.isEmpty()) {
+                    completeSession(uuid, player);
+                    return;
+                }
+            }
         }
 
         cleanupSession(uuid, player);
@@ -493,19 +529,25 @@ public class TranslationDetectionManager {
     private void completeSession(UUID uuid, Player player) {
         TranslationCheckSession session = sessions.get(uuid);
         if (session != null) {
-            if (!session.sharedDetectedModNames.isEmpty()) {
-                Map<String, String> placeholders = new HashMap<>();
-                placeholders.put("%player%", player == null ? "" : player.getName());
-                placeholders.put("%mod_name%", String.join(", ", session.sharedDetectedModNames));
-                placeholders.put("%detected_value%", String.join(" | ", session.sharedDetectedValues));
-                plugin.getPunishmentExecutor().execute(player, plugin.getConfigManager().getTranslationAction(), placeholders);
-            }
+            synchronized (session) {
+                if (sessions.get(uuid) != session) {
+                    return;
+                }
 
-            String playerName = player == null ? uuid.toString() : player.getName();
-            if (session.detectedModNames.isEmpty()) {
-                plugin.getLogger().info("玩家 " + playerName + " 木牌检测结束，结果: 通过");
-            } else {
-                plugin.getLogger().warning("玩家 " + playerName + " 木牌检测结束，结果: 未通过，检测到: " + String.join(", ", session.detectedModNames));
+                if (!session.sharedDetectedModNames.isEmpty()) {
+                    Map<String, String> placeholders = new HashMap<>();
+                    placeholders.put("%player%", player == null ? "" : player.getName());
+                    placeholders.put("%mod_name%", String.join(", ", session.sharedDetectedModNames));
+                    placeholders.put("%detected_value%", String.join(" | ", session.sharedDetectedValues));
+                    plugin.getPunishmentExecutor().execute(player, plugin.getConfigManager().getTranslationAction(), placeholders);
+                }
+
+                String playerName = player == null ? uuid.toString() : player.getName();
+                if (session.detectedModNames.isEmpty()) {
+                    plugin.getLogger().info("玩家 " + playerName + " 木牌检测结束，结果: 通过");
+                } else {
+                    plugin.getLogger().warning("玩家 " + playerName + " 木牌检测结束，结果: 未通过，检测到: " + String.join(", ", session.detectedModNames));
+                }
             }
         }
 
