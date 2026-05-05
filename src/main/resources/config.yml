@@ -153,6 +153,8 @@ translation-detect:
       key: "config.do_a_barrel_roll.title"
     XPlusAutoFish:
       key: "key.autofish.open_gui"
+    HitRange:
+      key: "hitrange.name"
 #    XaerosMinimap:
 #      key: "gui.xaero_delete"
 #    XaerosWorldmap:
