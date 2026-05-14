@@ -38,7 +38,9 @@ public class ModDetectionManager {
         if (!playerChannels.containsKey(player.getName())) {
             playerChannels.put(player.getName(), new ArrayList<>());
         }
-        List<String> channels = playerChannels.get(player.getName());
+        List<String> liveChannels = playerChannels.get(player.getName());
+        // 网络线程仍会向 liveChannels 追加；主线程遍历时必须使用快照，否则 ConcurrentModificationException
+        List<String> channels = new ArrayList<>(liveChannels);
         List<ChannelModConfig> matchedConfigs = modChecker.checkMods(channels);
         if (matchedConfigs.isEmpty()) {
             plugin.getLogger().warning("玩家 %s 频道名检查通过，共有 %d 个频道 %c"

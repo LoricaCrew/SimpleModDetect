@@ -155,6 +155,8 @@ translation-detect:
       key: "key.autofish.open_gui"
     HitRange:
       key: "hitrange.name"
+    WynncraftSpellCaster:
+      key: "key.category.wynncraft-spell-caster.spell"
 #    XaerosMinimap:
 #      key: "gui.xaero_delete"
 #    XaerosWorldmap:
