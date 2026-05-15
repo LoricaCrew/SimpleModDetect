@@ -15,7 +15,7 @@ channel-detect:
     type: COMMAND
     # 可用变量: %player% %mod_name% %detected_mod%
     commands:
-      - "litebans:kick %player% §c你使用的模组不被允许进入此服务器\n§c被检测到的模组:\n§e%mod_name%\n§c请移除这些模组后重新加入"
+      - "litebans:ban %player% 1m §c你使用的模组不被允许进入此服务器\n§c被检测到的模组:\n§e%mod_name%\n§c请移除这些模组后重新加入"
   #  action:
   #    type: SEND
   #    server: "Limbo"
@@ -64,7 +64,7 @@ translation-detect:
     type: COMMAND
     # 可用变量: %player% %mod_name% %detected_value%
     commands:
-      - "litebans:kick %player% §c你使用的模组不被允许进入此服务器\n§c被检测到的模组:\n§e%mod_name%\n§c请移除这些模组后重新加入"
+      - "litebans:ban %player% 1m §c你使用的模组不被允许进入此服务器\n§c被检测到的模组:\n§e%mod_name%\n§c请移除这些模组后重新加入"
   # action:
   #   type: SEND
   #   server: "Limbo"
