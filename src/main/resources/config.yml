@@ -157,6 +157,8 @@ translation-detect:
       key: "hitrange.name"
     WynncraftSpellCaster:
       key: "key.category.wynncraft-spell-caster.spell"
+    YesSteveModel:
+      key: "key.category.yes_steve_model"
 #    XaerosMinimap:
 #      key: "gui.xaero_delete"
 #    XaerosWorldmap:
