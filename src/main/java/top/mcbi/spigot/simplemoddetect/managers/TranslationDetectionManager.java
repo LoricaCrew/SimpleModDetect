@@ -6,7 +6,6 @@ import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.sign.Side;
@@ -16,14 +15,14 @@ import top.mcbi.spigot.simplemoddetect.SimpleModDetect;
 import top.mcbi.spigot.simplemoddetect.managers.ConfigManager.TranslationModConfig;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.UUID;
 import java.util.logging.Level;
 
 public class TranslationDetectionManager {
@@ -34,13 +33,15 @@ public class TranslationDetectionManager {
     private final SimpleModDetect plugin;
     private final Map<UUID, TranslationCheckSession> sessions = new ConcurrentHashMap<>();
     private final Set<UUID> lockedPlayers = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, Integer> stuckWatchdogTasks = new ConcurrentHashMap<>();
+    private final Map<UUID, Integer> stuckRestartAttempts = new ConcurrentHashMap<>();
 
     private record ParsedPacketLine(int batchId, int lineIndex, String content) {
     }
 
     private static class TranslationCheckSession {
         private final Location signLocation;
-        private final BlockData originalBlockData;
+        private final BlockData originalClientBlockData;
         private final List<TranslationModConfig> pendingMods;
         private final List<String> detectedModNames = new ArrayList<>();
         private final List<String> sharedDetectedModNames = new ArrayList<>();
@@ -51,10 +52,11 @@ public class TranslationDetectionManager {
         private int currentBatchId;
         private int invalidResponseCount;
         private boolean finished;
+        private boolean fakeSignVisible;
 
-        private TranslationCheckSession(Location signLocation, BlockData originalBlockData, List<TranslationModConfig> pendingMods) {
+        private TranslationCheckSession(Location signLocation, BlockData originalClientBlockData, List<TranslationModConfig> pendingMods) {
             this.signLocation = signLocation;
-            this.originalBlockData = originalBlockData;
+            this.originalClientBlockData = originalClientBlockData;
             this.pendingMods = pendingMods;
             this.markerToken = generateMarkerToken();
         }
@@ -74,6 +76,7 @@ public class TranslationDetectionManager {
             return;
         }
 
+        stuckRestartAttempts.remove(player.getUniqueId());
         Bukkit.getScheduler().runTaskLater(plugin, () -> startCheck(player), config.getTranslationInitialCheckDelayTicks());
     }
 
@@ -84,19 +87,69 @@ public class TranslationDetectionManager {
 
         lockedPlayers.add(player.getUniqueId());
 
-        Block block = player.getLocation().clone().add(0.0, -5.0, 0.0).getBlock();
         TranslationCheckSession previousSession = sessions.remove(player.getUniqueId());
         if (previousSession != null) {
-            previousSession.signLocation.getBlock().setBlockData(previousSession.originalBlockData, false);
+            restoreClientBlock(player, previousSession);
         }
 
+        Location signLocation = player.getLocation().clone().add(0.0, -5.0, 0.0);
+        signLocation.setX(signLocation.getBlockX());
+        signLocation.setY(signLocation.getBlockY());
+        signLocation.setZ(signLocation.getBlockZ());
+
         TranslationCheckSession session = new TranslationCheckSession(
-            block.getLocation(),
-            block.getBlockData(),
+            signLocation,
+            signLocation.getBlock().getBlockData().clone(),
             new ArrayList<>(plugin.getConfigManager().getTranslationMods())
         );
         sessions.put(player.getUniqueId(), session);
+        scheduleStuckWatchdog(player);
         openNextBatch(player, session);
+    }
+
+    private void scheduleStuckWatchdog(Player player) {
+        UUID uuid = player.getUniqueId();
+        cancelStuckWatchdog(uuid);
+
+        int stuckSeconds = plugin.getConfigManager().getTranslationStuckRestartSeconds();
+        if (stuckSeconds <= 0) {
+            return;
+        }
+
+        int taskId = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            stuckWatchdogTasks.remove(uuid);
+            handleStuckWatchdog(player);
+        }, stuckSeconds * 20L).getTaskId();
+        stuckWatchdogTasks.put(uuid, taskId);
+    }
+
+    private void handleStuckWatchdog(Player player) {
+        UUID uuid = player.getUniqueId();
+        if (!player.isOnline() || !isPlayerLocked(uuid)) {
+            return;
+        }
+
+        int maxAttempts = plugin.getConfigManager().getTranslationStuckRestartMaxAttempts();
+        int attempts = stuckRestartAttempts.getOrDefault(uuid, 0);
+        if (attempts >= maxAttempts) {
+            plugin.getLogger().warning("玩家 " + player.getName()
+                + " 的木牌检测多次超时仍未完成，已解除行动限制并结束检测");
+            stuckRestartAttempts.remove(uuid);
+            cleanupSession(uuid, player);
+            return;
+        }
+
+        stuckRestartAttempts.put(uuid, attempts + 1);
+        plugin.getLogger().warning("玩家 " + player.getName()
+            + " 的木牌检测超时未解除限制，正在重新开始检测 (" + (attempts + 1) + "/" + maxAttempts + ")");
+        startCheck(player);
+    }
+
+    private void cancelStuckWatchdog(UUID uuid) {
+        Integer taskId = stuckWatchdogTasks.remove(uuid);
+        if (taskId != null) {
+            Bukkit.getScheduler().cancelTask(taskId);
+        }
     }
 
     private void openNextBatch(Player player, TranslationCheckSession session) {
@@ -112,54 +165,71 @@ public class TranslationDetectionManager {
         }
 
         try {
-            Block block = session.signLocation.getBlock();
             UUID uuid = player.getUniqueId();
-            block.setType(Material.OAK_SIGN, false);
-            if (block.getState() instanceof Sign sign) {
-                try {
-                    List<List<TranslationModConfig>> currentLineGroups;
-                    synchronized (session) {
-                        if (session.finished || !session.hasPendingMods()) {
-                            completeSession(uuid, player);
-                            return;
-                        }
-
-                        currentLineGroups = prepareNextBatch(session);
-                        if (currentLineGroups.isEmpty()) {
-                            completeSession(uuid, player);
-                            return;
-                        }
-                    }
-
-                    SignSide backSide = sign.getSide(Side.BACK);
-                    for (int i = 0; i < SIGN_LINE_COUNT; i++) {
-                        if (i < currentLineGroups.size()) {
-                            backSide.line(i, buildLineContent(session, i, currentLineGroups.get(i)));
-                        } else {
-                            backSide.line(i, Component.empty());
-                        }
-                    }
-
-                    sign.update(false, false);
-                    sign.setAllowedEditorUniqueId(uuid);
-
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        if (player.isOnline()) {
-                            player.openSign(sign, Side.BACK);
-                            player.closeInventory();
-                        }
-                    }, plugin.getConfigManager().getTranslationOpenSignDelayTicks());
-                } catch (Exception e) {
-                    plugin.getLogger().log(Level.SEVERE, "Failed to use adventure API for sign", e);
-                    abortDetection(uuid, player, null);
+            List<List<TranslationModConfig>> currentLineGroups;
+            synchronized (session) {
+                if (session.finished || !session.hasPendingMods()) {
+                    completeSession(uuid, player);
+                    return;
                 }
-            } else {
-                abortDetection(uuid, player, "玩家 " + player.getName() + " 的翻译键检测无法创建木牌，已终止本次检测");
+
+                currentLineGroups = prepareNextBatch(session);
+                if (currentLineGroups.isEmpty()) {
+                    completeSession(uuid, player);
+                    return;
+                }
             }
+
+            sendFakeSignAndOpen(player, session, currentLineGroups);
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to open sign editor: " + e.getMessage(), e);
+            plugin.getLogger().log(Level.SEVERE, "Failed to open fake sign editor: " + e.getMessage(), e);
             abortDetection(player.getUniqueId(), player, null);
         }
+    }
+
+    private void sendFakeSignAndOpen(
+        Player player,
+        TranslationCheckSession session,
+        List<List<TranslationModConfig>> currentLineGroups
+    ) {
+        Location location = session.signLocation;
+        BlockData signData = Material.OAK_SIGN.createBlockData();
+        if (!(signData.createBlockState() instanceof Sign signState)) {
+            abortDetection(player.getUniqueId(), player, "玩家 " + player.getName() + " 的翻译键检测无法创建虚拟木牌，已终止本次检测");
+            return;
+        }
+
+        SignSide backSide = signState.getSide(Side.BACK);
+        for (int i = 0; i < SIGN_LINE_COUNT; i++) {
+            if (i < currentLineGroups.size()) {
+                backSide.line(i, buildLineContent(session, i, currentLineGroups.get(i)));
+            } else {
+                backSide.line(i, Component.empty());
+            }
+        }
+
+        player.sendBlockChange(location, signData);
+        player.sendBlockUpdate(location, signState);
+        session.fakeSignVisible = true;
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!player.isOnline() || sessions.get(player.getUniqueId()) != session) {
+                return;
+            }
+
+            player.openVirtualSign(location, Side.BACK);
+            player.closeInventory();
+        }, plugin.getConfigManager().getTranslationOpenSignDelayTicks());
+    }
+
+    private void restoreClientBlock(Player player, TranslationCheckSession session) {
+        if (!session.fakeSignVisible || player == null || !player.isOnline()) {
+            session.fakeSignVisible = false;
+            return;
+        }
+
+        player.sendBlockChange(session.signLocation, session.originalClientBlockData);
+        session.fakeSignVisible = false;
     }
 
     public boolean handleSignUpdatePacket(Player player, ServerboundSignUpdatePacket packet) {
@@ -237,7 +307,9 @@ public class TranslationDetectionManager {
                 }
 
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    session.signLocation.getBlock().setBlockData(session.originalBlockData, false);
+                    if (sessions.get(player.getUniqueId()) == session) {
+                        restoreClientBlock(player, session);
+                    }
                 });
 
                 for (int lineIndex = 0; lineIndex < session.currentLineGroups.size(); lineIndex++) {
@@ -309,7 +381,7 @@ public class TranslationDetectionManager {
     private void notifyStaff(String message) {
         ConfigManager config = plugin.getConfigManager();
         if (!config.isNotifyStaff()) return;
-        
+
         Component staffNotification = Component.text("[SimpleModDetect] " + message, NamedTextColor.RED);
         for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
             if (onlinePlayer.hasPermission(config.getNotificationPermission())) {
@@ -319,6 +391,7 @@ public class TranslationDetectionManager {
     }
 
     public void removePlayer(UUID uuid) {
+        stuckRestartAttempts.remove(uuid);
         Player player = Bukkit.getPlayer(uuid);
         cleanupSession(uuid, player);
     }
@@ -551,18 +624,22 @@ public class TranslationDetectionManager {
             }
         }
 
+        stuckRestartAttempts.remove(uuid);
         cleanupSession(uuid, player);
     }
 
     private void cleanupSession(UUID uuid, Player player) {
+        cancelStuckWatchdog(uuid);
         lockedPlayers.remove(uuid);
         TranslationCheckSession session = sessions.remove(uuid);
-        if (session == null || player == null) {
+        if (session == null) {
             return;
         }
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            session.signLocation.getBlock().setBlockData(session.originalBlockData, false);
-        });
+        if (player != null && player.isOnline()) {
+            restoreClientBlock(player, session);
+        } else {
+            session.fakeSignVisible = false;
+        }
     }
 }

@@ -49,6 +49,10 @@ public class ConfigManager {
     @Getter
     private long translationNextBatchDelayTicks;
     @Getter
+    private int translationStuckRestartSeconds;
+    @Getter
+    private int translationStuckRestartMaxAttempts;
+    @Getter
     private int translationModsPerLine;
     @Getter
     private PunishmentAction translationAction;
@@ -179,6 +183,8 @@ public class ConfigManager {
         translationInitialCheckDelayTicks = Math.max(0L, config.getLong("translation-detect.timing.initial-check-delay-ticks", 10L));
         translationOpenSignDelayTicks = Math.max(0L, config.getLong("translation-detect.timing.open-sign-delay-ticks", 1L));
         translationNextBatchDelayTicks = Math.max(0L, config.getLong("translation-detect.timing.next-batch-delay-ticks", 1L));
+        translationStuckRestartSeconds = Math.max(0, config.getInt("translation-detect.timing.stuck-restart-seconds", 10));
+        translationStuckRestartMaxAttempts = Math.max(0, config.getInt("translation-detect.timing.stuck-restart-max-attempts", 2));
         translationModsPerLine = Math.max(1, config.getInt("translation-detect.batch.mods-per-line", 1));
         translationAction = parsePunishmentAction(config.getConfigurationSection("translation-detect"), "翻译检测", true);
 

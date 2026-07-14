@@ -12,7 +12,7 @@ public class VersionDetector {
 
     /**
      * 检测服务器版本
-     * @return 版本字符串，例如 "1.21.4" 或 "1.21.8"
+     * @return 版本字符串，例如 "26.1.2"
      */
     public static String detectVersion() {
         if (serverVersion != null) {
@@ -20,26 +20,28 @@ public class VersionDetector {
         }
 
         String bukkitVersion = Bukkit.getServer().getBukkitVersion();
-        // bukkitVersion格式通常是 "1.21.4-R0.1-SNAPSHOT"
-        
+        // bukkitVersion格式通常是 "26.1.2-R0.1-SNAPSHOT"
+
         try {
-            // 提取版本号部分（去掉-R0.1-SNAPSHOT等后缀）
             String[] parts = bukkitVersion.split("-");
             String versionPart = parts[0];
-            
-            // 解析主版本、次版本和补丁版本
+
             String[] versionNumbers = versionPart.split("\\.");
             if (versionNumbers.length >= 3) {
                 majorVersion = Integer.parseInt(versionNumbers[0]);
                 minorVersion = Integer.parseInt(versionNumbers[1]);
                 patchVersion = Integer.parseInt(versionNumbers[2]);
-                
+
                 serverVersion = majorVersion + "." + minorVersion + "." + patchVersion;
+            } else if (versionNumbers.length == 2) {
+                majorVersion = Integer.parseInt(versionNumbers[0]);
+                minorVersion = Integer.parseInt(versionNumbers[1]);
+                patchVersion = 0;
+                serverVersion = majorVersion + "." + minorVersion;
             } else {
-                // 如果解析失败，使用完整版本字符串
                 serverVersion = versionPart;
             }
-            
+
             Logger.getLogger("SimpleModDetect").info("检测到服务器版本: " + serverVersion);
         } catch (Exception e) {
             Logger.getLogger("SimpleModDetect").warning("无法解析服务器版本: " + bukkitVersion);
@@ -49,9 +51,6 @@ public class VersionDetector {
         return serverVersion;
     }
 
-    /**
-     * 获取主版本号
-     */
     public static int getMajorVersion() {
         if (serverVersion == null) {
             detectVersion();
@@ -59,9 +58,6 @@ public class VersionDetector {
         return majorVersion;
     }
 
-    /**
-     * 获取次版本号
-     */
     public static int getMinorVersion() {
         if (serverVersion == null) {
             detectVersion();
@@ -69,9 +65,6 @@ public class VersionDetector {
         return minorVersion;
     }
 
-    /**
-     * 获取补丁版本号
-     */
     public static int getPatchVersion() {
         if (serverVersion == null) {
             detectVersion();
@@ -79,26 +72,16 @@ public class VersionDetector {
         return patchVersion;
     }
 
-    /**
-     * 检查是否为支持的版本
-     */
     public static boolean isSupportedVersion() {
         String version = detectVersion();
-        return version.startsWith("1.21.4") || version.startsWith("1.21.8");
+        return version.startsWith("26.1.");
     }
 
-    /**
-     * 获取版本标识（用于加载适配器）
-     */
     public static String getVersionIdentifier() {
         String version = detectVersion();
-        if (version.startsWith("1.21.4")) {
-            return "v1_21_4";
-        } else if (version.startsWith("1.21.8")) {
-            return "v1_21_8";
+        if (version.startsWith("26.1.")) {
+            return "v26_1_2";
         }
-        // 默认返回1.21.8（最新版本）
-        return "v1_21_8";
+        return "v26_1_2";
     }
 }
-

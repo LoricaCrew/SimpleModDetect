@@ -37,7 +37,7 @@ public class SimpleModDetect extends JavaPlugin {
         String serverVersion = VersionDetector.detectVersion();
         if (!VersionAdapterManager.isVersionSupported()) {
             getLogger().warning("警告: 当前服务器版本 " + serverVersion + " 可能不受支持");
-            getLogger().warning("支持的版本: 1.21.4, 1.21.8");
+            getLogger().warning("支持的版本: 26.1.x");
             getLogger().warning("将尝试使用默认适配器，可能会出现兼容性问题");
         }
         VersionAdapterManager.initializeAdapter();

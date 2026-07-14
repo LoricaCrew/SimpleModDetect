@@ -59,6 +59,10 @@ translation-detect:
     open-sign-delay-ticks: 1
     # 一批木牌回包处理完成后，等待多久再发送下一批
     next-batch-delay-ticks: 1
+    # 开始木牌检测后，若玩家仍被限制行动，超过该秒数则重新开始检测（0 = 禁用）
+    stuck-restart-seconds: 10
+    # 因卡住而允许的最大重启次数（不含首次检测；0 = 仅解锁不重启）
+    stuck-restart-max-attempts: 2
   action:
     # 统一惩罚行为，可选 COMMAND 或 SEND
     type: COMMAND
@@ -159,6 +163,8 @@ translation-detect:
       key: "key.category.wynncraft-spell-caster.spell"
     YesSteveModel:
       key: "key.category.yes_steve_model"
+    PVPUtils:
+      key: "key.pvp_utils.open_settings"
 #    XaerosMinimap:
 #      key: "gui.xaero_delete"
 #    XaerosWorldmap:
