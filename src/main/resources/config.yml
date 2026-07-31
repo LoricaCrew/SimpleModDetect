@@ -165,6 +165,10 @@ translation-detect:
       key: "key.category.yes_steve_model"
     PVPUtils:
       key: "key.pvp_utils.open_settings"
+    BetterMaceSwap:
+      key: "key.category.bettermaceswap.general"
+    PearlWindChargeAnalysis:
+      key: "key.category.pearlwind_chargeanalysis.category"
 #    XaerosMinimap:
 #      key: "gui.xaero_delete"
 #    XaerosWorldmap:

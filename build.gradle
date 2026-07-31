@@ -24,7 +24,7 @@ repositories {
 
 dependencies {
     compileOnly fileTree('libs')
-    paperweight.paperDevBundle("26.1.2.build.+")
+    paperweight.paperDevBundle("26.2.build.+")
     shadow "io.papermc:paperlib:1.0.8"
 
     compileOnly 'org.projectlombok:lombok:1.18.44'

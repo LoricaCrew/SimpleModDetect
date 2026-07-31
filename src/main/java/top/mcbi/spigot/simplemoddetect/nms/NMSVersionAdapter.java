@@ -41,7 +41,7 @@ public interface NMSVersionAdapter {
     
     /**
      * 获取版本名称
-     * @return 版本名称，如 "26.1.2"
+     * @return 版本名称，如 "26.2"
      */
     String getVersionName();
 }

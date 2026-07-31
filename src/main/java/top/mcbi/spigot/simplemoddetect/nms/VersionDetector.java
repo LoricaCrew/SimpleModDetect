@@ -12,7 +12,7 @@ public class VersionDetector {
 
     /**
      * 检测服务器版本
-     * @return 版本字符串，例如 "26.1.2"
+     * @return 版本字符串，例如 "26.2" 或 "26.1.2"
      */
     public static String detectVersion() {
         if (serverVersion != null) {
@@ -20,7 +20,7 @@ public class VersionDetector {
         }
 
         String bukkitVersion = Bukkit.getServer().getBukkitVersion();
-        // bukkitVersion格式通常是 "26.1.2-R0.1-SNAPSHOT"
+        // bukkitVersion格式通常是 "26.2-R0.1-SNAPSHOT" 或 "26.1.2-R0.1-SNAPSHOT"
 
         try {
             String[] parts = bukkitVersion.split("-");
@@ -74,14 +74,17 @@ public class VersionDetector {
 
     public static boolean isSupportedVersion() {
         String version = detectVersion();
-        return version.startsWith("26.1.");
+        return version.startsWith("26.2") || version.startsWith("26.1.");
     }
 
     public static String getVersionIdentifier() {
         String version = detectVersion();
+        if (version.startsWith("26.2")) {
+            return "v26_2";
+        }
         if (version.startsWith("26.1.")) {
             return "v26_1_2";
         }
-        return "v26_1_2";
+        return "v26_2";
     }
 }

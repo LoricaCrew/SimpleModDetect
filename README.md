@@ -2,13 +2,13 @@
 
 ## 概述
 
-SimpleModDetect 是一个专为 **Paper 1.21.11** 服务器设计的轻量级 Fabric 模组检测插件。它通过监听 Minecraft 网络数据包来检测客户端使用的 Fabric 模组，并根据配置阻止违规玩家或将其传送到备用服务器。
+SimpleModDetect 是一个专为 **Paper 26.2** 服务器设计的轻量级 Fabric 模组检测插件。它通过监听 Minecraft 网络数据包来检测客户端使用的 Fabric 模组，并根据配置阻止违规玩家或将其传送到备用服务器。
 
 ## 兼容性
 
-- **仅支持 Paper 1.21.11** 服务器
+- **支持 Paper 26.2**（兼容 26.1.x）
 - 支持 Fabric 客户端模组检测
-- 需要 Java 17 或更高版本
+- 需要 Java 25 或更高版本
 
 ## 功能特性
 
@@ -36,7 +36,7 @@ SimpleModDetect 是一个专为 **Paper 1.21.11** 服务器设计的轻量级 Fa
 
 ## 安装方法
 
-1. 确保服务器运行 **Paper 1.21.11**
+1. 确保服务器运行 **Paper 26.2**
 2. 将 `SimpleModDetect.jar` 放入 `plugins` 文件夹
 3. 重启服务器
 4. 修改 `plugins/SimpleModDetect/config.yml` 配置文件
